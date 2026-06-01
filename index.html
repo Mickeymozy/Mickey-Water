@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Water Billing</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      color: #e2e8f0;
+      background: #0f172a;
+      accent-color: #38bdf8;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, sans-serif;
+      background: linear-gradient(135deg, #020617 0%, #0f172a 100%);
+      color: #e2e8f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .panel {
+      width: min(680px, 100%);
+      padding: 36px;
+      border-radius: 24px;
+      background: rgba(15, 23, 42, 0.96);
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.3);
+      text-align: center;
+    }
+
+    h1 {
+      margin: 0 0 14px;
+      font-size: clamp(2rem, 3vw, 2.7rem);
+    }
+
+    p {
+      margin: 0 0 28px;
+      line-height: 1.75;
+      color: #94a3b8;
+    }
+
+    .buttons {
+      display: grid;
+      gap: 12px;
+      margin: 0 auto;
+      max-width: 420px;
+    }
+
+    .button {
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      padding: 14px 18px;
+      border-radius: 14px;
+      text-decoration: none;
+      font-weight: 700;
+      transition: transform 0.2s ease, background-color 0.2s ease;
+    }
+
+    .button-primary {
+      background: linear-gradient(135deg, #2563eb 0%, #06b6d4 100%);
+      color: white;
+    }
+
+    .button-secondary {
+      background: rgba(255, 255, 255, 0.08);
+      color: #e2e8f0;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+    }
+
+    .button:hover {
+      transform: translateY(-2px);
+    }
+
+    footer {
+      margin-top: 32px;
+      color: #94a3b8;
+      font-size: 0.95rem;
+    }
+
+    footer a {
+      color: #38bdf8;
+      text-decoration: none;
+    }
+
+    footer a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="panel">
+    <h1>Water Billing App</h1>
+    <p>Fast and clean billing workflows for dashboard users. Sign in, register, or open your dashboard directly.</p>
+    <div class="buttons">
+      <a class="button button-primary" href="login.html">Sign in</a>
+      <a class="button button-secondary" href="signup.html">Register</a>
+      <a class="button button-secondary" href="botweb.html">Open dashboard</a>
+    </div>
+    <footer>
+      <p>Built for simple water billing and record management.</p>
+    </footer>
+  </div>
+</body>
+</html>
+
+        const data = await res.json();
+        document.getElementById('userInfo').innerText =
+          'Welcome, ' + (data.user.name || data.user.email);
+
+        loadDashboard();
+
+      } catch (e) {
+        console.error('Auth error:', e);
+        showStatus('Session expired. Redirecting to login...', 'error');
+        setTimeout(() => {
+          window.location.href = 'login.html';
+        }, 2000);
+      }
+    }
+
+    // ================= LOAD DASHBOARD =================
+    async function loadDashboard() {
+      const dashboard = document.querySelector('.dashboard');
+      dashboard.classList.add('loading');
+
+      try {
+        // Check cache first
+        if (cachedData && (Date.now() - cacheTime) < CACHE_DURATION) {
+          updateDashboardUI(cachedData);
+          dashboard.classList.remove('loading');
+          return;
+        }
+
+        console.log('📡 Fetching records...');
+
+        const res = await fetch('/get-records?limit=1000', {
+          credentials: 'same-origin',
+          signal: AbortSignal.timeout(10000)
+        });
+
+        if (!res.ok) throw new Error('API ERROR ' + res.status);
+
+        const data = await res.json();
+        console.log('📊 Received data:', data);
+
+        // Cache the data
+        cachedData = data;
+        cacheTime = Date.now();
+
+        updateDashboardUI(data);
+        showStatus('Dashboard updated', 'success');
+
+      } catch (e) {
+        console.error('❌ Dashboard error:', e);
+
+        if (retryCount > 0) {
+          retryCount--;
+          console.log('🔁 Retrying...', retryCount);
+          showStatus(`Loading... (${3 - retryCount}/3)`, 'info');
+          setTimeout(loadDashboard, 2000);
+        } else {
+          showStatus('Failed to load dashboard. Please try again.', 'error');
+        }
+      } finally {
+        dashboard.classList.remove('loading');
+      }
+    }
+
+    function updateDashboardUI(data) {
+      const records = data.records || [];
+
+      const totalBills = records.length;
+      const totalRevenue = records.reduce((a, b) => a + (b.total || 0), 0);
+      const totalUsage = records.reduce((a, b) => a + (b.usage || 0), 0);
+      const avgBill = totalBills ? totalRevenue / totalBills : 0;
+
+      document.getElementById('totalBills').innerText = totalBills.toLocaleString();
+      document.getElementById('totalRevenue').innerText =
+        'TZS ' + totalRevenue.toLocaleString('en-TZ', { maximumFractionDigits: 0 });
+      document.getElementById('avgBill').innerText =
+        'TZS ' + avgBill.toLocaleString('en-TZ', { maximumFractionDigits: 0 });
+      document.getElementById('totalUsage').innerText =
+        totalUsage.toFixed(2) + ' units';
+
+      console.log('✅ Dashboard updated');
+    }
+
+    // ================= REFRESH DASHBOARD =================
+    function refreshDashboard() {
+      retryCount = 3;
+      cachedData = null;
+      cacheTime = 0;
+      loadDashboard();
+    }
+  </script>
+
+</body>
+</html>

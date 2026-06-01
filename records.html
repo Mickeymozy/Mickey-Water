@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Records</title>
+  <style>
+    :root { --bg:#0f172a; --surface:#111827; --text:#e2e8f0; --muted:#94a3b8; --border:#334155; --primary:#38bdf8; --accent:#2563eb; }
+    *{box-sizing:border-box;}
+    body{margin:0;min-height:100vh;font-family:system-ui,sans-serif;background:linear-gradient(135deg,#030711 0%,#0f172a 100%);color:var(--text);}
+    header{padding:20px 24px;display:flex;justify-content:space-between;align-items:center;background:rgba(15,23,42,.92);border-bottom:1px solid rgba(148,163,184,.12);}
+    header h1{margin:0;font-size:1.6rem;}
+    header .actions{display:flex;gap:12px;}
+    header button, header a{border:none;border-radius:12px;padding:10px 16px;font-weight:700;background:rgba(56,189,248,.14);color:var(--text);text-decoration:none;cursor:pointer;transition:.2s;}
+    header button:hover, header a:hover{background:rgba(56,189,248,.22);}
+    main{padding:24px;max-width:1100px;margin:0 auto;display:grid;gap:20px;}
+    .summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;}
+    .metric{padding:18px;border-radius:18px;background:var(--surface);border:1px solid var(--border);}
+    .metric strong{display:block;font-size:1.9rem;margin-top:10px;color:#fff;}
+    .table-wrap{overflow-x:auto;background:var(--surface);border:1px solid var(--border);border-radius:20px;}
+    table{width:100%;border-collapse:collapse;min-width:720px;}
+    th,td{padding:14px 16px;text-align:left;border-bottom:1px solid rgba(148,163,184,.1);}
+    th{color:var(--muted);text-transform:uppercase;font-size:.78rem;letter-spacing:.08em;}
+    td{color:#f8fafc;}
+    .empty{padding:40px;text-align:center;color:var(--muted);}
+    .message{padding:16px 18px;border-radius:16px;background:rgba(56,189,248,.12);color:#cffafe;}
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Usage Records</h1>
+      <p style="margin:8px 0 0;color:var(--muted);">Review your latest meter readings and billing totals.</p>
+    </div>
+    <div class="actions">
+      <button id="refreshBtn">Refresh</button>
+      <button onclick="logout()">Logout</button>
+    </div>
+  </header>
+  <main>
+    <div class="summary">
+      <div class="metric"><span>Records</span><strong id="recordCount">0</strong></div>
+      <div class="metric"><span>Total Usage</span><strong id="totalUsage">0</strong></div>
+      <div class="metric"><span>Total Amount</span><strong id="totalAmount">TZS 0</strong></div>
+    </div>
+    <div id="message" class="message">Loading records...</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Name</th>
+            <th>Phone</th>
+            <th>Prev</th>
+            <th>Curr</th>
+            <th>Usage</th>
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody id="recordsBody"></tbody>
+      </table>
+    </div>
+  </main>
+  <script src="/records.js"></script>
+</body>
+</html>

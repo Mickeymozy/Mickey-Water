@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: mickey-water-billing
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: SESSION_SECRET
+        value: water_secret_123_production
+      - key: MONGODB_URI
+        value: mongodb+srv://mickidadyhamza_db_user:U41ddz44QsMxBI7D@cluster0.motlmco.mongodb.net/?appName=Cluster0
+      - key: GOOGLE_CLIENT_ID
+        value: your-google-client-id.apps.googleusercontent.com
+      - key: GOOGLE_CLIENT_SECRET
+        value: your-google-client-secret
+      - key: NODE_ENV
+        value: production

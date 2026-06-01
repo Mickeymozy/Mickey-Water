@@ -1,0 +1,13 @@
+<svg width="192" height="192" viewBox="0 0 192 192" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="waterGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e40af;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#06b6d4;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="192" height="192" rx="24" fill="url(#waterGradient)"/>
+  <circle cx="96" cy="80" r="35" fill="white" opacity="0.9"/>
+  <path d="M96 45 L96 115 M75 65 L96 85 L117 65" stroke="url(#waterGradient)" stroke-width="8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="96" y="150" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="16" font-weight="bold">WATER</text>
+  <text x="96" y="165" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="12">BILLING</text>
+</svg>

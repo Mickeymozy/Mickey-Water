@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard — Water Billing</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: system-ui, sans-serif;
+      color: #e2e8f0;
+      background: #0b1223;
+      accent-color: #38bdf8;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #09101f 0%, #0b1223 100%);
+      color: #e2e8f0;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 20px 24px;
+      background: rgba(15, 23, 42, 0.98);
+      border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-weight: 800;
+      font-size: 1.1rem;
+    }
+
+    nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      align-items: center;
+    }
+
+    nav a,
+    button {
+      border: none;
+      border-radius: 14px;
+      padding: 10px 16px;
+      background: rgba(56, 189, 248, 0.14);
+      color: #e2e8f0;
+      text-decoration: none;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.2s ease, background-color 0.2s ease;
+    }
+
+    nav a:hover,
+    button:hover {
+      transform: translateY(-1px);
+      background: rgba(56, 189, 248, 0.24);
+    }
+
+    main {
+      max-width: 1120px;
+      margin: 24px auto;
+      padding: 0 24px 40px;
+      display: grid;
+      gap: 24px;
+    }
+
+    .card {
+      background: rgba(15, 23, 42, 0.96);
+      border: 1px solid rgba(148, 163, 184, 0.12);
+      border-radius: 24px;
+      padding: 24px;
+      box-shadow: 0 20px 55px rgba(0, 0, 0, 0.22);
+    }
+
+    .card h1,
+    .card h2 {
+      margin: 0 0 14px;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .card p {
+      margin: 0;
+      color: #94a3b8;
+      line-height: 1.75;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-top: 20px;
+    }
+
+    .metric {
+      padding: 18px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(148, 163, 184, 0.12);
+    }
+
+    .metric span {
+      display: block;
+      color: #94a3b8;
+      font-size: 0.9rem;
+    }
+
+    .metric strong {
+      display: block;
+      margin-top: 12px;
+      font-size: 2rem;
+      color: #ffffff;
+    }
+
+    .form-group {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    label {
+      font-size: 0.95rem;
+      color: #cbd5e1;
+      font-weight: 600;
+    }
+
+    input,
+    textarea {
+      width: 100%;
+      padding: 14px 16px;
+      border-radius: 16px;
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      background: #090f1f;
+      color: #e2e8f0;
+      font: inherit;
+      resize: vertical;
+    }
+
+    textarea { min-height: 120px; }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .actions button {
+      min-width: 160px;
+    }
+
+    .btn-primary {
+      background: #2563eb;
+      color: white;
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.08);
+      color: #e2e8f0;
+    }
+
+    .message {
+      margin-top: 12px;
+      padding: 14px 16px;
+      border-radius: 16px;
+      background: rgba(56, 189, 248, 0.12);
+      color: #cbe7ff;
+    }
+
+    footer {
+      text-align: center;
+      color: #94a3b8;
+      font-size: 0.95rem;
+      margin-top: 20px;
+    }
+
+    @media (max-width: 720px) {
+      header { flex-direction: column; align-items: flex-start; }
+      nav { width: 100%; justify-content: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">Admin Panel</div>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="botweb.html">Dashboard</a>
+      <a href="records.html">Records</a>
+      <a href="login.html">Login</a>
+    </nav>
+    <button onclick="logout()">Logout</button>
+  </header>
+
+  <main>
+    <section class="card">
+      <h1>System summary</h1>
+      <p>Quick overview of user and record counts with a simple notification sender.</p>
+      <div class="stats">
+        <div class="metric"><span>Total users</span><strong id="usersCount">-</strong></div>
+        <div class="metric"><span>Total records</span><strong id="recordsCount">-</strong></div>
+        <div class="metric"><span>Pending resets</span><strong id="resetCount">-</strong></div>
+      </div>
+      <div class="actions">
+        <button class="btn-primary" onclick="refreshStats()">Refresh stats</button>
+        <button class="btn-secondary" onclick="window.location.href='/records.html'">Open records</button>
+      </div>
+      <div id="statusMessage" class="message" style="display:none;"></div>
+    </section>
+
+    <section class="card">
+      <h2>Send notification</h2>
+      <form id="notificationForm">
+        <div class="form-group">
+          <label for="notificationTitle">Title</label>
+          <input id="notificationTitle" type="text" placeholder="Maintenance starts at 10 PM" required maxlength="80">
+        </div>
+        <div class="form-group">
+          <label for="notificationBody">Message</label>
+          <textarea id="notificationBody" placeholder="Your panel will be unavailable for a short time." required maxlength="200"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="notificationUrl">Link (optional)</label>
+          <input id="notificationUrl" type="url" placeholder="/botweb.html">
+        </div>
+        <div class="actions">
+          <button class="btn-primary" type="submit" id="sendBtn">Send notification</button>
+          <button class="btn-secondary" type="button" onclick="showStatus('Use the form to broadcast an announcement.', 'info')">Help</button>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <script src="/admin.js"></script>
+  <footer>© 2026 Water Billing. Admin access only.</footer>
+</body>
+</html>
+</content>
+<parameter name="filePath">vscode-vfs://github/Mickeydeveloper/water-billing/admin.html
