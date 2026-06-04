@@ -641,7 +641,7 @@ app.get('/admin.html', protect, (req, res) => {
 app.get('/login.html', (req, res) => res.sendFile(path.join(__dirname, 'login.html')));
 app.get('/signup.html', (req, res) => res.sendFile(path.join(__dirname, 'signup.html')));
 app.get('/main.html', protect, (req, res) => res.sendFile(path.join(__dirname, 'main.html')));
-app.get('/botweb.html', (req, res) => res.sendFile(path.join(__dirname, 'botweb.html')));
+app.get('/botweb.html', protect, (req, res) => res.sendFile(path.join(__dirname, 'botweb.html')));
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 

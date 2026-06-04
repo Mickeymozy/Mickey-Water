@@ -5,6 +5,7 @@ const urlsToCache = [
   '/login.html',
   '/signup.html',
   '/botweb.html',
+  '/dashboard.html',
   '/admin.html',
   '/main.html',
   '/records.html',

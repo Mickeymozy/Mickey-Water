@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Records</title>
   <style>
-    :root { --bg:#0f172a; --surface:#111827; --text:#e2e8f0; --muted:#94a3b8; --border:#334155; --primary:#38bdf8; --accent:#2563eb; }
+    :root { --bg:#0f172a; --surface:#111827; --text:#e2e8f0; --muted:#94a3b8; --border:#334155; --primary:#38bdf8; --accent:#2563eb; --success:#22c55e; --error:#f87171; }
     *{box-sizing:border-box;}
     body{margin:0;min-height:100vh;font-family:system-ui,sans-serif;background:linear-gradient(135deg,#030711 0%,#0f172a 100%);color:var(--text);}
     header{padding:20px 24px;display:flex;justify-content:space-between;align-items:center;background:rgba(15,23,42,.92);border-bottom:1px solid rgba(148,163,184,.12);}
@@ -14,6 +14,12 @@
     header button, header a{border:none;border-radius:12px;padding:10px 16px;font-weight:700;background:rgba(56,189,248,.14);color:var(--text);text-decoration:none;cursor:pointer;transition:.2s;}
     header button:hover, header a:hover{background:rgba(56,189,248,.22);}
     main{padding:24px;max-width:1100px;margin:0 auto;display:grid;gap:20px;}
+    .tabs{display:flex;gap:8px;border-bottom:2px solid var(--border);margin-bottom:12px;}
+    .tab-btn{border:none;background:none;color:var(--muted);padding:14px 20px;font-size:1rem;font-weight:600;cursor:pointer;border-bottom:3px solid transparent;transition:.2s;position:relative;bottom:-2px;}
+    .tab-btn:hover{color:var(--text);}
+    .tab-btn.active{color:var(--primary);border-bottom-color:var(--primary);}
+    .tab-content{display:none;}
+    .tab-content.active{display:block;}
     .summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;}
     .metric{padding:18px;border-radius:18px;background:var(--surface);border:1px solid var(--border);}
     .metric strong{display:block;font-size:1.9rem;margin-top:10px;color:#fff;}
@@ -23,14 +29,36 @@
     th{color:var(--muted);text-transform:uppercase;font-size:.78rem;letter-spacing:.08em;}
     td{color:#f8fafc;}
     .empty{padding:40px;text-align:center;color:var(--muted);}
-    .message{padding:16px 18px;border-radius:16px;background:rgba(56,189,248,.12);color:#cffafe;}
+    .message{padding:16px 18px;border-radius:16px;background:rgba(56,189,248,.12);color:#cffafe;display:none;}
+    .message.error{background:rgba(248,113,113,.12);color:#fca5a5;}
+    .message.success{background:rgba(34,197,94,.12);color:#86efac;}
+    .form-group{margin-bottom:20px;}
+    .form-group label{display:block;margin-bottom:8px;font-weight:600;color:var(--text);}
+    .form-group input, .form-group select{width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:12px;background:rgba(15,23,42,.8);color:var(--text);font-family:inherit;font-size:1rem;transition:.2s;}
+    .form-group input:focus, .form-group select:focus{outline:none;border-color:var(--primary);background:rgba(15,23,42,.9);}
+    .form-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px;}
+    .form-section{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:24px;}
+    .calculation-display{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:12px;}
+    .calc-item{padding:12px;border-radius:12px;background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.2);}
+    .calc-label{font-size:.85rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;}
+    .calc-value{display:block;font-size:1.6rem;font-weight:700;color:var(--primary);margin-top:6px;}
+    .form-actions{display:flex;gap:12px;margin-top:24px;flex-wrap:wrap;}
+    .btn{border:none;border-radius:12px;padding:12px 24px;font-weight:700;cursor:pointer;transition:.2s;font-size:1rem;}
+    .btn-primary{background:rgba(56,189,248,.24);color:var(--text);border:1px solid var(--primary);}
+    .btn-primary:hover{background:rgba(56,189,248,.32);}
+    .btn-secondary{background:rgba(148,163,184,.12);color:var(--text);border:1px solid var(--border);}
+    .btn-secondary:hover{background:rgba(148,163,184,.2);}
+    .btn-danger{background:rgba(248,113,113,.12);color:#fca5a5;border:1px solid rgba(248,113,113,.3);}
+    .btn-danger:hover{background:rgba(248,113,113,.2);}
+    .btn:disabled{opacity:.5;cursor:not-allowed;}
+    .required::after{content:" *";color:var(--error);}
   </style>
 </head>
 <body>
   <header>
     <div>
       <h1>Usage Records</h1>
-      <p style="margin:8px 0 0;color:var(--muted);">Review your latest meter readings and billing totals.</p>
+      <p style="margin:8px 0 0;color:var(--muted);">Manage your water meter readings and billing records.</p>
     </div>
     <div class="actions">
       <button id="refreshBtn">Refresh</button>
@@ -38,27 +66,93 @@
     </div>
   </header>
   <main>
-    <div class="summary">
-      <div class="metric"><span>Records</span><strong id="recordCount">0</strong></div>
-      <div class="metric"><span>Total Usage</span><strong id="totalUsage">0</strong></div>
-      <div class="metric"><span>Total Amount</span><strong id="totalAmount">TZS 0</strong></div>
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="view-records">View Records</button>
+      <button class="tab-btn" data-tab="add-record">Add Record</button>
     </div>
-    <div id="message" class="message">Loading records...</div>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Name</th>
-            <th>Phone</th>
-            <th>Prev</th>
-            <th>Curr</th>
-            <th>Usage</th>
-            <th>Total</th>
-          </tr>
-        </thead>
-        <tbody id="recordsBody"></tbody>
-      </table>
+
+    <!-- View Records Tab -->
+    <div id="view-records" class="tab-content active">
+      <div class="summary">
+        <div class="metric"><span>Records</span><strong id="recordCount">0</strong></div>
+        <div class="metric"><span>Total Usage</span><strong id="totalUsage">0</strong></div>
+        <div class="metric"><span>Total Amount</span><strong id="totalAmount">TZS 0</strong></div>
+      </div>
+      <div id="message" class="message">Loading records...</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Name</th>
+              <th>Phone</th>
+              <th>Prev</th>
+              <th>Curr</th>
+              <th>Usage</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody id="recordsBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Add Record Tab -->
+    <div id="add-record" class="tab-content">
+      <div class="form-section">
+        <h2 style="margin-top:0;margin-bottom:24px;">Create New Billing Record</h2>
+        <form id="addRecordForm">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="customerName" class="required">Customer Name</label>
+              <input type="text" id="customerName" name="customerName" required placeholder="Enter customer name">
+            </div>
+            <div class="form-group">
+              <label for="phoneNumber">Phone Number</label>
+              <input type="tel" id="phoneNumber" name="phoneNumber" placeholder="Enter phone number (optional)">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="previousReading" class="required">Previous Reading (m³)</label>
+              <input type="number" id="previousReading" name="previousReading" min="0" step="0.1" required placeholder="0">
+            </div>
+            <div class="form-group">
+              <label for="currentReading" class="required">Current Reading (m³)</label>
+              <input type="number" id="currentReading" name="currentReading" min="0" step="0.1" required placeholder="0">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="ratePerUnit">Rate in TZS per m³</label>
+              <input type="number" id="ratePerUnit" name="ratePerUnit" min="0" step="1" value="2000" placeholder="2000">
+            </div>
+            <div class="form-group">
+              <label for="fixedCharge">Fixed Charge (TZS)</label>
+              <input type="number" id="fixedCharge" name="fixedCharge" min="0" step="1" value="0" placeholder="0">
+            </div>
+          </div>
+
+          <div class="calculation-display">
+            <div class="calc-item">
+              <div class="calc-label">Usage</div>
+              <div class="calc-value" id="calculatedUsage">0 m³</div>
+            </div>
+            <div class="calc-item">
+              <div class="calc-label">Total Amount</div>
+              <div class="calc-value" id="calculatedTotal">TZS 0</div>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Save Record</button>
+            <button type="button" class="btn btn-secondary" onclick="resetAddRecordForm()">Clear Form</button>
+            <button type="button" class="btn btn-danger" onclick="switchTab('view-records')">Cancel</button>
+          </div>
+        </form>
+      </div>
     </div>
   </main>
   <script src="/records.js"></script>
