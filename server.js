@@ -5,7 +5,7 @@ const passport = require('passport');
 const LocalStrategy = require('passport-local').Strategy;
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const session = require('express-session');
-const MongoStore = require('connect-mongo'); // FIX: Ili session zisipotee seva ikizima Render
+const MongoStore = require('connect-mongo');
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const compression = require('compression');
@@ -14,7 +14,7 @@ const axios = require('axios');
 
 const app = express();
 
-// ================== PROXY TRUST (FIX ILIYOONGEZWA KWA AJILI YA RENDER) ==================
+// ================== PROXY TRUST (FIX KWA AJILI YA RENDER) ==================
 app.set('trust proxy', 1); 
 
 // ================== EMAIL CONFIGURATION ==================
@@ -74,7 +74,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// ================== BASIC ==================
+// ================== BASIC MIDDLEWARES ==================
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -90,10 +90,13 @@ mongoose.connect(MONGODB_URI)
   .then(() => console.log("Mongo Connected ✅"))
   .catch(err => console.log("Mongo Error ❌", err));
 
+// FIX YA MONGOOSE V8 (MTAZAMO SALAMA WA QUERIES)
+mongoose.set('strictQuery', true);
+
 // ================== SESSION CONFIGURATION WITH MONGOSTORE ==================
 app.use(session({
   secret: process.env.SESSION_SECRET || 'secret123',
-  resave: false, // Imerekebishwa kutoka true kwenda false (Inashauriwa)
+  resave: false, 
   saveUninitialized: false, 
   store: MongoStore.create({
     mongoUrl: MONGODB_URI,
@@ -129,10 +132,10 @@ const userSchema = new mongoose.Schema({
 });
 
 const recordSchema = new mongoose.Schema({
-  userId: { type: String, index: true },
-  date: String, // Imeongezwa ili kuendana na records.html ya mwanzo
+  userId: { type: String, index: true }, // ID ya Admin aliyeweka rekodi
+  date: String, 
   name: String,
-  phone: { type: String, index: true },
+  phone: { type: String, index: true }, // Hapa ndipo Admin anaweka Email ya mteja ili mteja aione
   prev: Number,
   curr: Number,
   usage: Number,
@@ -275,11 +278,17 @@ app.get('/api/me', (req, res) => {
   res.json({ user: req.user });
 });
 
-// ================== STANDARD RECORDS ENDPOINTS (KWA AJILI YA RECORDS.HTML) ==================
+// ================== RECORDS ENDPOINTS (KWA AJILI YA RECORDS.HTML) ==================
+// MABADILIKO MAKUBWA YA MFUMO WA MAONI (RECORDS VISIBILITY) YA MTUMIAJI NA ADMIN
 app.get('/api/records', protect, async (req, res) => {
   try {
-    // Watumiaji wa kawaida wanaona tu namba zao, Admin anaona zote au za mfumo
-    const query = isAdmin(req.user) ? {} : { userId: req.user._id.toString() };
+    let query = {};
+    
+    if (!isAdmin(req.user)) {
+      // Kama ni mteja wa kawaida, anaona tu rekodi ambazo Admin alijaza email yake kwenye field ya phone
+      query = { phone: req.user.email.toLowerCase() };
+    }
+    
     const records = await Record.find(query).sort({ createdAt: -1 });
     res.json(records);
   } catch (err) {
@@ -290,11 +299,13 @@ app.get('/api/records', protect, async (req, res) => {
 app.post('/api/records', protect, async (req, res) => {
   try {
     const { name, phone, prev, curr, usage, total, date } = req.body;
+    
+    // Inasave rekodi ikionyesha nani ameitengeneza (Admin) na namba/email ya mfafanuzi (phone)
     const newRecord = new Record({
-      userId: req.user._id.toString(),
+      userId: req.user._id.toString(), 
       date,
       name,
-      phone,
+      phone: phone ? phone.toLowerCase() : '', // Inahifadhi kwa herufi ndogo ili kurahisisha utafutaji (query)
       prev,
       curr,
       usage,
@@ -558,7 +569,7 @@ app.post('/api/setup-admin', async (req, res) => {
   }
 });
 
-// ================== AUTHENTICATION ENDPOINTS (COMPLETED) ==================
+// ================== AUTHENTICATION ENDPOINTS (SASA ZIPO KAMILI) ==================
 app.post('/signup', async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -603,6 +614,6 @@ app.get('/logout', (req, res) => {
   });
 });
 
-// Washa Seva
+// ================== WASHA SEVA ==================
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Seva inafanya kazi kwenye port ${PORT}`));
+app.listen(PORT, () => console.log(`Seva ipo hewani kwenye port ${PORT} 🚀`));
