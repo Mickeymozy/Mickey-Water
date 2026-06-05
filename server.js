@@ -104,16 +104,49 @@ app.use(async (req, res, next) => {
 
 mongoose.set('strictQuery', true);
 
-// ================== SESSION CONFIGURATION WITH MONGOSTORE ==================
-app.use(session({
+// ================== SESSION STORE - LAZY INITIALIZATION FOR VERCEL ==================
+let sessionStore = null;
+
+// Initialize session store lazily after first request
+const getSessionStore = async () => {
+  if (!sessionStore) {
+    try {
+      // Ensure MongoDB connection first
+      if (mongoose.connection.readyState === 0) {
+        await mongoose.connect(MONGODB_URI);
+      }
+      sessionStore = MongoStore.create({
+        mongoUrl: MONGODB_URI,
+        collectionName: 'sessions',
+        ttl: 7 * 24 * 60 * 60
+      });
+    } catch (err) {
+      console.error('Failed to initialize session store:', err.message);
+      throw err;
+    }
+  }
+  return sessionStore;
+};
+
+// ================== SESSION CONFIGURATION WITH LAZY STORE ==================
+const sessionMiddleware = session({
   secret: process.env.SESSION_SECRET || 'secret123',
   resave: false, 
   saveUninitialized: false, 
-  store: MongoStore.create({
-    mongoUrl: MONGODB_URI,
-    collectionName: 'sessions',
-    ttl: 7 * 24 * 60 * 60 // Wiki 1
-  }),
+  store: new (class {
+    get(sid, cb) {
+      getSessionStore().then(store => store.get(sid, cb)).catch(cb);
+    }
+    set(sid, sess, cb) {
+      getSessionStore().then(store => store.set(sid, sess, cb)).catch(cb);
+    }
+    destroy(sid, cb) {
+      getSessionStore().then(store => store.destroy(sid, cb)).catch(cb);
+    }
+    all(cb) {
+      getSessionStore().then(store => store.all && store.all(cb)).catch(cb);
+    }
+  })(),
   cookie: { 
     secure: true, // Vercel zote zina HTTPS kwa default
     httpOnly: true,
@@ -121,7 +154,9 @@ app.use(session({
     sameSite: 'lax'
   },
   name: 'waterBillingSid'
-}));
+});
+
+app.use(sessionMiddleware);
 
 app.use(passport.initialize());
 app.use(passport.session());
@@ -279,6 +314,11 @@ const protect = (req, res, next) => {
 
 const adminEmails = ['mickidadyhamza@gmail.com'];
 const isAdmin = (user) => user && adminEmails.includes(user.email);
+
+// ================== HEALTH CHECK ==================
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
 
 app.get('/api/me', (req, res) => {
   if (!req.user) return res.status(401).json({});
