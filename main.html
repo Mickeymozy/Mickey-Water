@@ -3,26 +3,374 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Redirecting...</title>
+  <title>User Advanced Dashboard</title>
   <style>
-    body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center; background:#0b1223; color:#e2e8f0; font-family:system-ui, sans-serif; text-align:center; padding:24px; }
-    .panel { max-width:620px; width:100%; padding:28px; border-radius:20px; background:rgba(15,23,42,.95); border:1px solid rgba(148,163,184,.18); }
-    h1 { margin-bottom:14px; font-size:2rem; }
-    p { color:#94a3b8; line-height:1.75; }
+    :root {
+      --bg: #0b1329;
+      --surface: #1c2541;
+      --surface-hover: #222c4e;
+      --primary: #38bdf8;
+      --accent: #5bc0be;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --border: rgba(148, 163, 184, 0.15);
+      --success: #22c55e;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body {
+      min-height: 100vh;
+      background: radial-gradient(circle at top right, #132247 0%, var(--bg) 100%);
+      color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: grid;
+      gap: 24px;
+    }
+
+    /* TOP PROFILE HEADER */
+    .profile-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+    }
+
+    .profile-info {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .profile-img {
+      width: 75px;
+      height: 75px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 3px solid var(--primary);
+      box-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
+    }
+
+    .profile-text h2 {
+      font-size: 1.5rem;
+      color: #fff;
+      margin-bottom: 4px;
+    }
+
+    .profile-text p {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .badge {
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--primary);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+
+    /* DEVICE SYNC SYSTEM GRID */
+    .sync-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+    }
+
+    .sync-card {
+      background: rgba(28, 37, 65, 0.6);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.2s, background 0.2s;
+    }
+
+    .sync-card:hover {
+      background: var(--surface-hover);
+      transform: translateY(-2px);
+    }
+
+    .sync-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; width: 4px; height: 100%;
+      background: var(--accent);
+    }
+
+    .sync-card.battery::before { background: #eab308; }
+    .sync-card.isp::before { background: #a855f7; }
+    .sync-card.device::before { background: #ec4899; }
+
+    .sync-label {
+      font-size: 0.8rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .sync-value {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    /* ACTION BUTTONS */
+    .actions-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 24px;
+    }
+
+    .panel-title {
+      font-size: 1.1rem;
+      margin-bottom: 16px;
+      color: var(--muted);
+    }
+
+    .btn-group {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 14px;
+    }
+
+    .btn {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      color: #fff;
+      padding: 16px;
+      border-radius: 16px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      transition: all 0.2s;
+    }
+
+    .btn:hover {
+      background: var(--primary);
+      color: var(--bg);
+      border-color: var(--primary);
+      box-shadow: 0 4px 20px rgba(56, 189, 248, 0.3);
+      transform: scale(1.02);
+    }
+
+    .btn-logout {
+      border-color: rgba(239, 68, 68, 0.4);
+      color: #fca5a5;
+    }
+
+    .btn-logout:hover {
+      background: #ef4444;
+      color: #fff;
+      border-color: #ef4444;
+      box-shadow: 0 4px 20px rgba(239, 68, 68, 0.3);
+    }
+
+    /* LOADING SCREEN COVER */
+    #auth-loader {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      transition: opacity 0.4s ease;
+    }
+
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 16px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
-  <div class="panel">
-    <h1>Loading dashboard…</h1>
-    <p>If you are signed in, you will be redirected to your dashboard shortly.</p>
+
+  <div id="auth-loader">
+    <div class="spinner"></div>
+    <p style="color: var(--muted)">Checking account authentication...</p>
   </div>
+
+  <div class="container">
+    
+    <header class="profile-card">
+      <div class="profile-info">
+        <img class="profile-img" src="https://d.uguu.se/sSeFuSGp.jpg" alt="Profile Avatar">
+        <div class="profile-text">
+          <h2 id="user-name">Loading Account Name...</h2>
+          <p id="user-email">please wait...</p>
+        </div>
+      </div>
+      <div id="user-role" class="badge">Checking Role...</div>
+    </header>
+
+    <section class="sync-grid">
+      <div class="sync-card device">
+        <span class="sync-label">Device System</span>
+        <span id="sync-device" class="sync-value">Detecting...</span>
+      </div>
+
+      <div class="sync-card battery">
+        <span class="sync-label">Device Battery</span>
+        <span id="sync-battery" class="sync-value">Syncing...</span>
+      </div>
+
+      <div class="sync-card isp">
+        <span class="sync-label">Network ISP (Real)</span>
+        <span id="sync-isp" class="sync-value">Fetching...</span>
+      </div>
+
+      <div class="sync-card">
+        <span class="sync-label">System Engine</span>
+        <span id="sync-engine" class="sync-value">Checking...</span>
+      </div>
+    </section>
+
+    <main class="actions-panel">
+      <div class="panel-title">Quick Dashboard Navigation Actions</div>
+      <div class="btn-group">
+        <button class="btn" onclick="navigateTo('/records.html')">📋 View Billing Records</button>
+        <button class="btn" onclick="navigateTo('/records.html?tab=add-record')">➕ Add New Record</button>
+        <button class="btn" onclick="navigateTo('/profile.html')">⚙️ Account Settings</button>
+        <button class="btn btn-logout" onclick="handleLogout()">🚪 Secure Sign Out</button>
+      </div>
+    </main>
+
+  </div>
+
   <script>
-    fetch('/api/me', { credentials: 'same-origin' })
-      .then((res) => {
-        if (res.ok) return window.location.href = '/botweb.html';
-        window.location.href = '/login.html';
-      })
-      .catch(() => window.location.href = '/login.html');
+    // 1. ANZA KUKAGUA KAMA MTUMIAJI AMELOGIN KUTOKA KWENYE SERVER
+    document.addEventListener("DOMContentLoaded", () => {
+      fetch('/api/me', { credentials: 'same-origin' })
+        .then(res => {
+          if (!res.ok) throw new Error('Not Authenticated');
+          return res.json();
+        })
+        .then(data => {
+          // Mtumiaji yupo salama, jaza data zake
+          const user = data.user;
+          document.getElementById('user-name').innerText = user.name || 'System User';
+          document.getElementById('user-email').innerText = user.email || 'No email attached';
+          
+          // Tambua kama ni Admin au Mteja wa kawaida
+          const adminEmails = ['mickidadyhamza@gmail.com'];
+          if (adminEmails.includes(user.email)) {
+            document.getElementById('user-role').innerText = 'Administrator';
+            document.getElementById('user-role').style.borderColor = '#22c55e';
+            document.getElementById('user-role').style.color = '#22c55e';
+          } else {
+            document.getElementById('user-role').innerText = 'Client Account';
+          }
+
+          // Ondoa ile Loading screen na uonyeshe dashboard
+          const loader = document.getElementById('auth-loader');
+          loader.style.opacity = '0';
+          setTimeout(() => loader.style.display = 'none', 400);
+
+          // Washa mifumo ya kusync taarifa za kifaa
+          runDeviceSync();
+        })
+        .catch(() => {
+          // Kama hajalogin, mpeleke login.html
+          window.location.href = '/login.html';
+        });
+    });
+
+    // 2. MFUMO WA KUSYNC TAARIFA ZA KIFAA (BATTERY, DEVICE, ISP)
+    function runDeviceSync() {
+      // A. Kusoma Jina la Kifaa/Mfumo wa Uendeshaji
+      const userAgent = navigator.userAgent;
+      let deviceName = "Unknown Device";
+      if (userAgent.includes("Windows")) deviceName = "Windows PC";
+      else if (userAgent.includes("Macintosh")) deviceName = "MacBook / iMac";
+      else if (userAgent.includes("Android")) deviceName = "Android Mobile";
+      else if (userAgent.includes("iPhone")) deviceName = "Apple iPhone";
+      else if (userAgent.includes("Linux")) deviceName = "Linux Machine";
+      document.getElementById('sync-device').innerText = deviceName;
+
+      // B. Kusoma Mfumo wa Kivinjari (Engine)
+      if (navigator.userAgentData) {
+        document.getElementById('sync-engine').innerText = navigator.userAgentData.brands[0]?.brand || "Web Engine";
+      } else {
+        document.getElementById('sync-engine').innerText = navigator.vendor || "Webkit Standard";
+      }
+
+      // C. Kusync Hali ya Battery (Kama kifaa kina battery)
+      if (navigator.getBattery) {
+        navigator.getBattery().then(battery => {
+          function updateBatteryDisplay() {
+            const level = Math.floor(battery.level * 100);
+            const status = battery.charging ? "⚡ Charging" : "Discharging";
+            document.getElementById('sync-battery').innerText = `${level}% (${status})`;
+          }
+          updateBatteryDisplay();
+          battery.addEventListener('levelchange', updateBatteryDisplay);
+          battery.addEventListener('chargingchange', updateBatteryDisplay);
+        });
+      } else {
+        document.getElementById('sync-battery').innerText = "N/A (Desktop/No Battery)";
+      }
+
+      // D. Kusync Jina Halisi la ISP (Mtandao unaotumika sasa hivi) kwa usahihi wa 100%
+      fetch('https://ipapi.co/json/')
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.org) {
+            document.getElementById('sync-isp').innerText = data.org; // Mfano: "Vodacom Tanzania", "Halotel", etc.
+          } else {
+            document.getElementById('sync-isp').innerText = "Unknown ISP";
+          }
+        })
+        .catch(() => {
+          document.getElementById('sync-isp').innerText = "Network Error";
+        });
+    }
+
+    // 3. UTANGAULIZI NA SAFARI KWENYE KURASA NYINGINE
+    function navigateTo(url) {
+      window.location.href = url;
+    }
+
+    // 4. KULOGOUT MTUMIAJI SALAMA
+    function handleLogout() {
+      if(confirm("Are you sure you want to log out safely?")) {
+        fetch('/logout')
+          .then(() => window.location.href = '/login.html')
+          .catch(() => window.location.href = '/login.html');
+      }
+    }
   </script>
 </body>
 </html>
