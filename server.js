@@ -5,6 +5,7 @@ const passport = require('passport');
 const LocalStrategy = require('passport-local').Strategy;
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const session = require('express-session');
+const MongoStore = require('connect-mongo'); // FIX: Ili session zisipotee seva ikizima Render
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const compression = require('compression');
@@ -83,13 +84,23 @@ app.use(express.static(__dirname, {
   index: false
 }));
 
-// ================== SESSION ==================
+// ================== MONGODB CONNECTION ==================
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/water_billing';
+mongoose.connect(MONGODB_URI)
+  .then(() => console.log("Mongo Connected ✅"))
+  .catch(err => console.log("Mongo Error ❌", err));
+
+// ================== SESSION CONFIGURATION WITH MONGOSTORE ==================
 app.use(session({
   secret: process.env.SESSION_SECRET || 'secret123',
-  resave: true,
-  saveUninitialized: true,
+  resave: false, // Imerekebishwa kutoka true kwenda false (Inashauriwa)
+  saveUninitialized: false, 
+  store: MongoStore.create({
+    mongoUrl: MONGODB_URI,
+    collectionName: 'sessions'
+  }),
   cookie: { 
-    secure: process.env.NODE_ENV === 'production', // Itakuwa true kama ipo Render (Inalindwa na proxy trust yetu)
+    secure: process.env.NODE_ENV === 'production', 
     httpOnly: true,
     maxAge: 7 * 24 * 60 * 60 * 1000,
     sameSite: 'lax'
@@ -99,11 +110,6 @@ app.use(session({
 
 app.use(passport.initialize());
 app.use(passport.session());
-
-// ================== MONGODB ==================
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log("Mongo Connected ✅"))
-  .catch(err => console.log("Mongo Error ❌", err));
 
 // ================== MODELS WITH INDEXES ==================
 const userSchema = new mongoose.Schema({
@@ -124,6 +130,7 @@ const userSchema = new mongoose.Schema({
 
 const recordSchema = new mongoose.Schema({
   userId: { type: String, index: true },
+  date: String, // Imeongezwa ili kuendana na records.html ya mwanzo
   name: String,
   phone: { type: String, index: true },
   prev: Number,
@@ -191,31 +198,23 @@ passport.use('local', new LocalStrategy({
   }
 }));
 
-// Google Strategy (MABADILIKO YAMEFANYIKA HAPA KWA AJILI YA REDIRECT URI)
 passport.use('google', new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID || 'not-configured',
   clientSecret: process.env.GOOGLE_CLIENT_SECRET || 'not-configured',
   callbackURL: process.env.GOOGLE_CALLBACK_URL || 'https://mickey-glitch.onrender.com/auth/google/callback',
-  proxy: true // Hii inalazimisha strategy kuheshimu https itifaki kutoka kwenye Render proxy
+  proxy: true 
 }, async (accessToken, refreshToken, profile, done) => {
   try {
-    if (!profile.id) {
-      console.error('❌ Google OAuth: Missing profile.id');
-      return done(new Error('Invalid Google profile'));
-    }
+    if (!profile.id) return done(new Error('Invalid Google profile'));
 
     const email = profile.emails?.[0]?.value;
-    if (!email) {
-      console.error('❌ Google OAuth: Missing email in profile');
-      return done(new Error('Email required from Google profile'));
-    }
+    if (!email) return done(new Error('Email required from Google profile'));
 
     let user = await User.findOne({ googleId: profile.id });
 
     if (!user) {
       const existingByEmail = await User.findOne({ email: email.toLowerCase() });
       if (existingByEmail) {
-        console.log('ℹ️  Google OAuth: Linking Google ID to existing email');
         existingByEmail.googleId = profile.id;
         existingByEmail.picture = profile.photos?.[0]?.value || existingByEmail.picture;
         existingByEmail.lastLogin = new Date();
@@ -232,18 +231,15 @@ passport.use('google', new GoogleStrategy({
         provider: 'google',
         lastLogin: new Date()
       });
-      console.log('✅ Google OAuth: New user created:', email);
       await user.save();
     } else {
       user.lastLogin = new Date();
       user.picture = profile.photos?.[0]?.value || user.picture;
       await user.save();
-      console.log('✅ Google OAuth: Existing user logged in:', email);
     }
 
     return done(null, user);
   } catch (err) {
-    console.error('❌ Google OAuth error:', err.message);
     return done(err);
   }
 }));
@@ -259,12 +255,11 @@ passport.deserializeUser(async (id, done) => {
     if (!user) return done(null, false);
     done(null, user);
   } catch (err) {
-    console.error('❌ Deserialization error:', err.message);
     done(err);
   }
 });
 
-// ================== AUTH ==================
+// ================== AUTH MIDDLEWARE ==================
 const protect = (req, res, next) => {
   if (!req.isAuthenticated() || !req.user) {
     return res.status(401).json({ error: "Unauthorized" });
@@ -278,6 +273,38 @@ const isAdmin = (user) => user && adminEmails.includes(user.email);
 app.get('/api/me', (req, res) => {
   if (!req.user) return res.status(401).json({});
   res.json({ user: req.user });
+});
+
+// ================== STANDARD RECORDS ENDPOINTS (KWA AJILI YA RECORDS.HTML) ==================
+app.get('/api/records', protect, async (req, res) => {
+  try {
+    // Watumiaji wa kawaida wanaona tu namba zao, Admin anaona zote au za mfumo
+    const query = isAdmin(req.user) ? {} : { userId: req.user._id.toString() };
+    const records = await Record.find(query).sort({ createdAt: -1 });
+    res.json(records);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch records' });
+  }
+});
+
+app.post('/api/records', protect, async (req, res) => {
+  try {
+    const { name, phone, prev, curr, usage, total, date } = req.body;
+    const newRecord = new Record({
+      userId: req.user._id.toString(),
+      date,
+      name,
+      phone,
+      prev,
+      curr,
+      usage,
+      total
+    });
+    await newRecord.save();
+    res.status(201).json({ success: true, data: newRecord });
+  } catch (err) {
+    res.status(400).json({ error: 'Failed to save record' });
+  }
 });
 
 // ================== USER MANAGEMENT ENDPOINTS ==================
@@ -531,137 +558,51 @@ app.post('/api/setup-admin', async (req, res) => {
   }
 });
 
-// ================== AUTHENTICATION ENDPOINTS ==================
+// ================== AUTHENTICATION ENDPOINTS (COMPLETED) ==================
 app.post('/signup', async (req, res) => {
   try {
     const { name, email, password } = req.body;
-    if (await User.findOne({ email: email.toLowerCase() })) return res.status(409).json({ error: 'Exists' });
+    if (await User.findOne({ email: email.toLowerCase() })) {
+      return res.status(409).json({ error: 'User already exists' });
+    }
 
-    const newUser = new User({ id: Date.now().toString(), name, email: email.toLowerCase(), passwordHash: await bcrypt.hash(password, 10), provider: 'local' });
+    const newUser = new User({ 
+      id: Date.now().toString(), 
+      name, 
+      email: email.toLowerCase(), 
+      passwordHash: await bcrypt.hash(password, 10), 
+      provider: 'local' 
+    });
     await newUser.save();
 
     req.login(newUser, (err) => {
-      if (err) return res.status(500).json({ error: 'Err' });
-      res.json({ success: true, user: newUser });
+      if (err) return res.status(500).json({ error: 'Login error after signup' });
+      return res.json({ success: true, user: newUser });
     });
   } catch (err) {
-    res.status(500).json({ error: 'Error' });
+    res.status(500).json({ error: 'Signup failed' });
   }
 });
 
-app.post('/local-login', (req, res, next) => {
+app.post('/login', (req, res, next) => {
   passport.authenticate('local', (err, user, info) => {
-    if (!user) return res.status(401).json({ error: 'Invalid' });
-    req.login(user, async (err) => {
-      await User.findByIdAndUpdate(user._id, { lastLogin: new Date() });
-      res.json({ success: true, user });
-    });
-  })(req, res, next);
-});
-
-// Google OAuth routes
-app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
-
-app.get('/auth/google/callback', (req, res, next) => {
-  passport.authenticate('google', { session: true }, async (err, user, info) => {
-    if (err) return res.redirect(`/login.html?error=${encodeURIComponent(err.message)}`);
-    if (!user) return res.redirect('/login.html?error=no-user');
-
+    if (err) return res.status(500).json({ error: 'Internal server error' });
+    if (!user) return res.status(401).json({ error: info.message || 'Login failed' });
+    
     req.login(user, (loginErr) => {
-      if (loginErr) return res.redirect('/login.html?error=session');
-      const redirectUrl = ['mickidadyhamza@gmail.com'].includes(user.email) ? '/admin.html' : '/records.html';
-      res.redirect(redirectUrl);
+      if (loginErr) return res.status(500).json({ error: 'Session login error' });
+      return res.json({ success: true, user });
     });
   })(req, res, next);
 });
 
-app.get('/logout', (req, res, next) => {
-  req.logout((err) => { res.redirect('/login.html'); });
+app.get('/logout', (req, res) => {
+  req.logout((err) => {
+    if (err) return res.status(500).json({ error: 'Logout failed' });
+    res.json({ success: true, message: 'Logged out successfully' });
+  });
 });
 
-// ================== AI/CHAT API ==================
-app.get('/api/chat', async (req, res) => {
-  const { text } = req.query;
-  res.json({ reply: "Service Active", confidence: "high" });
-});
-
-// ================== SAVE RECORD ==================
-app.post('/save-record', protect, async (req, res) => {
-  try {
-    const { curr, prev, name, phone, rate, fixed } = req.body;
-    const usage = curr - prev;
-    const total = (usage * (rate || 2000)) + (fixed || 0);
-
-    const record = new Record({ userId: req.user.id, name, phone, prev, curr, usage, total });
-    await record.save();
-    delete recordCache[req.user.id];
-    res.json({ success: true, record });
-  } catch (e) {
-    res.status(500).json({ error: "Err" });
-  }
-});
-
-const recordCache = {};
-const CACHE_DURATION = 5 * 60 * 1000;
-
-app.get('/get-records', protect, async (req, res) => {
-  try {
-    const isAdminUser = isAdmin(req.user);
-    const page = Math.max(1, parseInt(req.query.page) || 1);
-    const limit = Math.min(50, parseInt(req.query.limit) || 20);
-    const skip = (page - 1) * limit;
-
-    if (!isAdminUser && recordCache[req.user.id]) return res.json(recordCache[req.user.id]);
-    const query = isAdminUser ? {} : { userId: req.user.id };
-
-    const [records, total] = await Promise.all([
-      Record.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).lean().exec(),
-      Record.countDocuments(query).exec()
-    ]);
-
-    const response = { success: true, records, pagination: { page, limit, total, pages: Math.ceil(total / limit) } };
-    if (!isAdminUser) {
-      recordCache[req.user.id] = response;
-      setTimeout(() => { delete recordCache[req.user.id]; }, CACHE_DURATION);
-    }
-    res.json(response);
-  } catch (e) {
-    res.status(500).json({ error: "Err" });
-  }
-});
-
-// ================== ROUTES ==================
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
-app.get('/dashboard.html', protect, (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')));
-app.get('/records.html', protect, (req, res) => res.sendFile(path.join(__dirname, 'records.html')));
-app.get('/admin.html', protect, (req, res) => {
-  if (!isAdmin(req.user)) return res.status(403).redirect('/login.html');
-  res.sendFile(path.join(__dirname, 'admin.html'));
-});
-app.get('/login.html', (req, res) => res.sendFile(path.join(__dirname, 'login.html')));
-app.get('/signup.html', (req, res) => res.sendFile(path.join(__dirname, 'signup.html')));
-app.get('/main.html', protect, (req, res) => res.sendFile(path.join(__dirname, 'main.html')));
-app.get('/botweb.html', protect, (req, res) => res.sendFile(path.join(__dirname, 'botweb.html')));
-
-app.get('/health', (req, res) => res.json({ status: 'ok' }));
-
-// Analytics routes... (zimebaki salama kama zilivyokuwa)
-app.post('/api/stream/analytics/event', async (req, res) => {
-  try {
-    const { sessionId, timestamp, event, channel, category, userId, userEmail, severity, ...data } = req.body;
-    const analyticsEvent = new StreamAnalytics({ sessionId, userId, userEmail, event, channel, category, severity, data, userAgent: req.get('user-agent') });
-    await analyticsEvent.save();
-    res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: 'Err' }); }
-});
-
-// Error handlers...
-app.use((err, req, res, next) => {
-  res.status(err.status || 500).json({ error: 'Internal error' });
-});
-app.use((req, res) => res.status(404).json({ error: 'Not found' }));
-
+// Washa Seva
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`✅ Server running on port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`Seva inafanya kazi kwenye port ${PORT}`));
