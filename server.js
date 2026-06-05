@@ -14,7 +14,7 @@ const axios = require('axios');
 
 const app = express();
 
-// ================== PROXY TRUST (FIX KWA AJILI YA RENDER) ==================
+// ================== PROXY TRUST (FIX KWA AJILI YA VERCEL/RENDER) ==================
 app.set('trust proxy', 1); 
 
 // ================== EMAIL CONFIGURATION ==================
@@ -84,13 +84,23 @@ app.use(express.static(__dirname, {
   index: false
 }));
 
-// ================== MONGODB CONNECTION ==================
+// ================== MONGODB CONNECTION WITH MIDDLEWARE LAZY LOAD FOR VERCEL ==================
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/water_billing';
-mongoose.connect(MONGODB_URI)
-  .then(() => console.log("Mongo Connected ✅"))
-  .catch(err => console.log("Mongo Error ❌", err));
 
-// FIX YA MONGOOSE V8 (MTAZAMO SALAMA WA QUERIES)
+// Kuhakikisha muunganisho upo sawa kwenye Serverless Functions kabla ya kila ombi (Request)
+app.use(async (req, res, next) => {
+  if (mongoose.connection.readyState === 0) {
+    try {
+      await mongoose.connect(MONGODB_URI);
+      console.log("Mongo Connected ✅ (Serverless Lazy)");
+    } catch (err) {
+      console.error("Mongo Connection Error ❌", err);
+      return res.status(500).json({ error: "Database connection failed" });
+    }
+  }
+  next();
+});
+
 mongoose.set('strictQuery', true);
 
 // ================== SESSION CONFIGURATION WITH MONGOSTORE ==================
@@ -100,10 +110,11 @@ app.use(session({
   saveUninitialized: false, 
   store: MongoStore.create({
     mongoUrl: MONGODB_URI,
-    collectionName: 'sessions'
+    collectionName: 'sessions',
+    ttl: 7 * 24 * 60 * 60 // Wiki 1
   }),
   cookie: { 
-    secure: process.env.NODE_ENV === 'production', 
+    secure: true, // Vercel zote zina HTTPS kwa default
     httpOnly: true,
     maxAge: 7 * 24 * 60 * 60 * 1000,
     sameSite: 'lax'
@@ -132,10 +143,10 @@ const userSchema = new mongoose.Schema({
 });
 
 const recordSchema = new mongoose.Schema({
-  userId: { type: String, index: true }, // ID ya Admin aliyeweka rekodi
+  userId: { type: String, index: true }, 
   date: String, 
   name: String,
-  phone: { type: String, index: true }, // Hapa ndipo Admin anaweka Email ya mteja ili mteja aione
+  phone: { type: String, index: true }, 
   prev: Number,
   curr: Number,
   usage: Number,
@@ -173,15 +184,10 @@ const streamAnalyticsSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now, index: true, expires: 2592000 }
 });
 
-streamAnalyticsSchema.index({ sessionId: 1, timestamp: -1 });
-streamAnalyticsSchema.index({ userId: 1, timestamp: -1 });
-streamAnalyticsSchema.index({ channel: 1, timestamp: -1 });
-streamAnalyticsSchema.index({ event: 1, timestamp: -1 });
-
-const User = mongoose.model('User', userSchema);
-const Record = mongoose.model('Record', recordSchema);
-const PasswordResetRequest = mongoose.model('PasswordResetRequest', passwordResetSchema);
-const StreamAnalytics = mongoose.model('StreamAnalytics', streamAnalyticsSchema);
+const User = mongoose.models.User || mongoose.model('User', userSchema);
+const Record = mongoose.models.Record || mongoose.model('Record', recordSchema);
+const PasswordResetRequest = mongoose.models.PasswordResetRequest || mongoose.model('PasswordResetRequest', passwordResetSchema);
+const StreamAnalytics = mongoose.models.StreamAnalytics || mongoose.model('StreamAnalytics', streamAnalyticsSchema);
 
 // ================== PASSPORT STRATEGIES ==================
 passport.use('local', new LocalStrategy({
@@ -248,7 +254,7 @@ passport.use('google', new GoogleStrategy({
 }));
 
 passport.serializeUser((user, done) => {
-  done(null, user._id);
+  done(null, user._id.toString());
 });
 
 passport.deserializeUser(async (id, done) => {
@@ -278,17 +284,13 @@ app.get('/api/me', (req, res) => {
   res.json({ user: req.user });
 });
 
-// ================== RECORDS ENDPOINTS (KWA AJILI YA RECORDS.HTML) ==================
-// MABADILIKO MAKUBWA YA MFUMO WA MAONI (RECORDS VISIBILITY) YA MTUMIAJI NA ADMIN
+// ================== RECORDS ENDPOINTS ==================
 app.get('/api/records', protect, async (req, res) => {
   try {
     let query = {};
-    
     if (!isAdmin(req.user)) {
-      // Kama ni mteja wa kawaida, anaona tu rekodi ambazo Admin alijaza email yake kwenye field ya phone
       query = { phone: req.user.email.toLowerCase() };
     }
-    
     const records = await Record.find(query).sort({ createdAt: -1 });
     res.json(records);
   } catch (err) {
@@ -299,13 +301,11 @@ app.get('/api/records', protect, async (req, res) => {
 app.post('/api/records', protect, async (req, res) => {
   try {
     const { name, phone, prev, curr, usage, total, date } = req.body;
-    
-    // Inasave rekodi ikionyesha nani ameitengeneza (Admin) na namba/email ya mfafanuzi (phone)
     const newRecord = new Record({
       userId: req.user._id.toString(), 
       date,
       name,
-      phone: phone ? phone.toLowerCase() : '', // Inahifadhi kwa herufi ndogo ili kurahisisha utafutaji (query)
+      phone: phone ? phone.toLowerCase() : '', 
       prev,
       curr,
       usage,
@@ -394,7 +394,7 @@ app.post('/api/zenopay/checkout', protect, async (req, res) => {
     const rawBaseUrl = (process.env.ZENOPAY_API_URL || 'https://api.zenoapi.com').trim().replace(/\/+$/, '');
     const checkoutUrl = `${rawBaseUrl}${process.env.ZENOPAY_CHECKOUT_PATH || '/checkout/sessions'}`;
 
-    const callbackUrl = `${process.env.APP_URL || 'http://localhost:3000'}/records.html`;
+    const callbackUrl = `${process.env.APP_URL || 'https://billing-rho.vercel.app'}/records.html`;
     const payload = {
       amount, currency, description: `Water billing payment for record ${recordId}`,
       callback_url: callbackUrl,
@@ -569,7 +569,7 @@ app.post('/api/setup-admin', async (req, res) => {
   }
 });
 
-// ================== AUTHENTICATION ENDPOINTS (SASA ZIPO KAMILI) ==================
+// ================== AUTHENTICATION ENDPOINTS ==================
 app.post('/signup', async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -599,7 +599,7 @@ app.post('/login', (req, res, next) => {
   passport.authenticate('local', (err, user, info) => {
     if (err) return res.status(500).json({ error: 'Internal server error' });
     if (!user) return res.status(401).json({ error: info.message || 'Login failed' });
-    
+
     req.login(user, (loginErr) => {
       if (loginErr) return res.status(500).json({ error: 'Session login error' });
       return res.json({ success: true, user });
@@ -614,6 +614,6 @@ app.get('/logout', (req, res) => {
   });
 });
 
-// ================== WASHA SEVA ==================
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Seva ipo hewani kwenye port ${PORT} 🚀`));
+// ================== EXPORT KWA AJILI YA VERCEL SERVERLESS ==================
+// ONDOA kabisa `app.listen(PORT)` kwa sababu Vercel inahitaji ku-export module hii hivi:
+module.exports = app;
