@@ -86,6 +86,7 @@ app.use(express.static(__dirname, {
 
 // ================== MONGODB CONNECTION WITH MIDDLEWARE LAZY LOAD FOR VERCEL ==================
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/water_billing';
+const PORT = process.env.PORT || 3000;
 
 // Kuhakikisha muunganisho upo sawa kwenye Serverless Functions kabla ya kila ombi (Request)
 app.use(async (req, res, next) => {
@@ -614,6 +615,17 @@ app.get('/logout', (req, res) => {
   });
 });
 
-// ================== EXPORT KWA AJILI YA VERCEL SERVERLESS ==================
-// ONDOA kabisa `app.listen(PORT)` kwa sababu Vercel inahitaji ku-export module hii hivi:
+// ================== GLOBAL ERROR HANDLER ==================
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);
+  res.status(500).json({ error: 'Internal server error' });
+});
+
+// ================== LOCAL START + VERCEL SERVERLESS EXPORT ==================
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Server listening on http://localhost:${PORT}`);
+  });
+}
+
 module.exports = app;
