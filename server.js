@@ -104,49 +104,32 @@ app.use(async (req, res, next) => {
 
 mongoose.set('strictQuery', true);
 
-// ================== SESSION STORE - LAZY INITIALIZATION FOR VERCEL ==================
-let sessionStore = null;
+// ================== SESSION STORE - MONGODB WITH FALLBACK FOR VERCEL ==================
+let sessionStore;
 
-// Initialize session store lazily after first request
-const getSessionStore = async () => {
-  if (!sessionStore) {
-    try {
-      // Ensure MongoDB connection first
-      if (mongoose.connection.readyState === 0) {
-        await mongoose.connect(MONGODB_URI);
-      }
-      sessionStore = MongoStore.create({
-        mongoUrl: MONGODB_URI,
-        collectionName: 'sessions',
-        ttl: 7 * 24 * 60 * 60
-      });
-    } catch (err) {
-      console.error('Failed to initialize session store:', err.message);
-      throw err;
-    }
-  }
-  return sessionStore;
-};
+// Try to use MongoDB store, but fallback to MemoryStore if it fails
+try {
+  sessionStore = MongoStore.create({
+    mongoUrl: MONGODB_URI,
+    collectionName: 'sessions',
+    ttl: 7 * 24 * 60 * 60,
+    autoRemove: 'interval',
+    autoRemoveInterval: 10
+  });
+  console.log('✅ Session store using MongoDB');
+} catch (err) {
+  console.warn('⚠️  MongoDB session store initialization failed, using memory store:', err.message);
+  // Fallback: use MemoryStore (not production-ideal but prevents crashes)
+  const session_pkg = require('express-session');
+  sessionStore = new session_pkg.MemoryStore();
+}
 
-// ================== SESSION CONFIGURATION WITH LAZY STORE ==================
-const sessionMiddleware = session({
+// ================== SESSION CONFIGURATION ==================
+app.use(session({
   secret: process.env.SESSION_SECRET || 'secret123',
   resave: false, 
   saveUninitialized: false, 
-  store: new (class {
-    get(sid, cb) {
-      getSessionStore().then(store => store.get(sid, cb)).catch(cb);
-    }
-    set(sid, sess, cb) {
-      getSessionStore().then(store => store.set(sid, sess, cb)).catch(cb);
-    }
-    destroy(sid, cb) {
-      getSessionStore().then(store => store.destroy(sid, cb)).catch(cb);
-    }
-    all(cb) {
-      getSessionStore().then(store => store.all && store.all(cb)).catch(cb);
-    }
-  })(),
+  store: sessionStore,
   cookie: { 
     secure: true, // Vercel zote zina HTTPS kwa default
     httpOnly: true,
@@ -154,9 +137,7 @@ const sessionMiddleware = session({
     sameSite: 'lax'
   },
   name: 'waterBillingSid'
-});
-
-app.use(sessionMiddleware);
+}));
 
 app.use(passport.initialize());
 app.use(passport.session());
