@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Records with MongoDB & SMS</title>
+  <title>Water Billing - Records Management</title>
   <style>
     :root { --bg:#0f172a; --surface:#111827; --text:#e2e8f0; --muted:#94a3b8; --border:#334155; --primary:#38bdf8; --accent:#2563eb; --success:#22c55e; --error:#f87171; }
     *{box-sizing:border-box;}
@@ -13,15 +13,16 @@
     header .actions{display:flex;gap:12px;}
     header button, header a{border:none;border-radius:12px;padding:10px 16px;font-weight:700;background:rgba(56,189,248,.14);color:var(--text);text-decoration:none;cursor:pointer;transition:.2s;}
     header button:hover, header a:hover{background:rgba(56,189,248,.22);}
-    main{padding:24px;max-width:1100px;margin:0 auto;display:grid;gap:20px;}
+    main{padding:24px;max-width:1400px;margin:0 auto;display:grid;gap:20px;}
     .tabs{display:flex;gap:8px;border-bottom:2px solid var(--border);margin-bottom:12px;}
     .tab-btn{border:none;background:none;color:var(--muted);padding:14px 20px;font-size:1rem;font-weight:600;cursor:pointer;border-bottom:3px solid transparent;transition:.2s;position:relative;bottom:-2px;}
     .tab-btn:hover{color:var(--text);}
     .tab-btn.active{color:var(--primary);border-bottom-color:var(--primary);}
     .tab-content{display:none;}
     .tab-content.active{display:block;}
-    .summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;}
+    .summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:20px;}
     .metric{padding:18px;border-radius:18px;background:var(--surface);border:1px solid var(--border);}
+    .metric span{font-size:0.85rem;color:var(--muted);}
     .metric strong{display:block;font-size:1.9rem;margin-top:10px;color:#fff;}
     .table-wrap{overflow-x:auto;background:var(--surface);border:1px solid var(--border);border-radius:20px;}
     table{width:100%;border-collapse:collapse;min-width:800px;}
@@ -29,13 +30,13 @@
     th{color:var(--muted);text-transform:uppercase;font-size:.78rem;letter-spacing:.08em;}
     td{color:#f8fafc;}
     .empty{padding:40px;text-align:center;color:var(--muted);}
-    .message{padding:16px 18px;border-radius:16px;background:rgba(56,189,248,.12);color:#cffafe;display:none;}
+    .message{padding:16px 18px;border-radius:16px;background:rgba(56,189,248,.12);color:#cffafe;display:none;margin-bottom:20px;}
     .message.error{background:rgba(248,113,113,.12);color:#fca5a5;}
     .message.success{background:rgba(34,197,94,.12);color:#86efac;}
     .form-group{margin-bottom:20px;}
     .form-group label{display:block;margin-bottom:8px;font-weight:600;color:var(--text);}
-    .form-group input, .form-group select{width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:12px;background:rgba(15,23,42,.8);color:var(--text);font-family:inherit;font-size:1rem;transition:.2s;}
-    .form-group input:focus, .form-group select:focus{outline:none;border-color:var(--primary);background:rgba(15,23,42,.9);}
+    .form-group input{width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:12px;background:rgba(15,23,42,.8);color:var(--text);font-family:inherit;font-size:1rem;transition:.2s;}
+    .form-group input:focus{outline:none;border-color:var(--primary);background:rgba(15,23,42,.9);}
     .form-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px;}
     .form-section{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:24px;}
     .calculation-display{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:12px;}
@@ -52,34 +53,33 @@
     .btn-danger:hover{background:rgba(248,113,113,.2);}
     .btn-sms{background:rgba(34,197,94,.15);color:#86efac;border:1px solid var(--success);padding:6px 12px;font-size:0.85rem;border-radius:8px;cursor:pointer;font-weight:600;}
     .btn-sms:hover{background:rgba(34,197,94,.25);}
-    .btn:disabled{opacity:.5;cursor:not-allowed;}
     .required::after{content:" *";color:var(--error);}
   </style>
 </head>
 <body>
   <header>
     <div>
-      <h1>Usage Records (MongoDB)</h1>
-      <p style="margin:8px 0 0;color:var(--muted);">Manage your water meter readings and billing records.</p>
+      <h1>🌊 Water Billing Records</h1>
+      <p style="margin:8px 0 0;color:var(--muted);">Manage water meter readings and billing records</p>
     </div>
     <div class="actions">
-      <button id="refreshBtn">Refresh</button>
-      <button onclick="logout()">Logout</button>
+      <button id="refreshBtn">🔄 Refresh</button>
+      <button onclick="logout()">🚪 Logout</button>
     </div>
   </header>
   <main>
     <div class="tabs">
-      <button class="tab-btn active" data-tab="view-records">View Records</button>
-      <button class="tab-btn" data-tab="add-record">Add Record</button>
+      <button class="tab-btn active" data-tab="view-records">📋 View Records</button>
+      <button class="tab-btn" data-tab="add-record">➕ Add Record</button>
     </div>
 
     <div id="view-records" class="tab-content active">
       <div class="summary">
-        <div class="metric"><span>Records</span><strong id="recordCount">0</strong></div>
+        <div class="metric"><span>Total Records</span><strong id="recordCount">0</strong></div>
         <div class="metric"><span>Total Usage</span><strong id="totalUsage">0 m³</strong></div>
         <div class="metric"><span>Total Amount</span><strong id="totalAmount">TZS 0</strong></div>
       </div>
-      <div id="message" class="message">Inapakia taarifa kutoka MongoDB...</div>
+      <div id="message" class="message">Loading records from server...</div>
       <div class="table-wrap">
         <table>
           <thead>
@@ -87,15 +87,15 @@
               <th>Date</th>
               <th>Name</th>
               <th>Phone</th>
-              <th>Prev</th>
-              <th>Curr</th>
-              <th>Usage</th>
-              <th>Total</th>
+              <th>Prev (m³)</th>
+              <th>Curr (m³)</th>
+              <th>Usage (m³)</th>
+              <th>Total (TZS)</th>
               <th>Action</th>
             </tr>
           </thead>
           <tbody id="recordsBody">
-            <tr><td colspan="8" class="empty">Inapakia...</td></tr>
+            <tr><td colspan="8" class="empty">Loading...</td></tr>
           </tbody>
         </table>
       </div>
@@ -108,33 +108,33 @@
           <div class="form-row">
             <div class="form-group">
               <label for="customerName" class="required">Customer Name</label>
-              <input type="text" id="customerName" name="customerName" required placeholder="Enter customer name">
+              <input type="text" id="customerName" required placeholder="Enter customer name">
             </div>
             <div class="form-group">
               <label for="phoneNumber">Phone Number</label>
-              <input type="tel" id="phoneNumber" name="phoneNumber" placeholder="Enter phone number (e.g. 0712345678)">
+              <input type="tel" id="phoneNumber" placeholder="e.g., 0712345678">
             </div>
           </div>
 
           <div class="form-row">
             <div class="form-group">
               <label for="previousReading" class="required">Previous Reading (m³)</label>
-              <input type="number" id="previousReading" name="previousReading" min="0" step="0.1" required placeholder="0">
+              <input type="number" id="previousReading" min="0" step="0.1" required placeholder="0">
             </div>
             <div class="form-group">
               <label for="currentReading" class="required">Current Reading (m³)</label>
-              <input type="number" id="currentReading" name="currentReading" min="0" step="0.1" required placeholder="0">
+              <input type="number" id="currentReading" min="0" step="0.1" required placeholder="0">
             </div>
           </div>
 
           <div class="form-row">
             <div class="form-group">
-              <label for="ratePerUnit">Rate in TZS per m³</label>
-              <input type="number" id="ratePerUnit" name="ratePerUnit" min="0" step="1" value="2000" placeholder="2000">
+              <label for="ratePerUnit">Rate (TZS per m³)</label>
+              <input type="number" id="ratePerUnit" min="0" step="1" value="2000">
             </div>
             <div class="form-group">
               <label for="fixedCharge">Fixed Charge (TZS)</label>
-              <input type="number" id="fixedCharge" name="fixedCharge" min="0" step="1" value="0" placeholder="0">
+              <input type="number" id="fixedCharge" min="0" step="1" value="0">
             </div>
           </div>
 
@@ -150,9 +150,9 @@
           </div>
 
           <div class="form-actions">
-            <button type="submit" id="saveBtn" class="btn btn-primary">Save Record</button>
-            <button type="button" class="btn btn-secondary" onclick="resetAddRecordForm()">Clear Form</button>
-            <button type="button" class="btn btn-danger" onclick="switchTab('view-records')">Cancel</button>
+            <button type="submit" id="saveBtn" class="btn btn-primary">💾 Save Record</button>
+            <button type="button" class="btn btn-secondary" onclick="resetForm()">🗑️ Clear Form</button>
+            <button type="button" class="btn btn-danger" onclick="switchTab('view-records')">❌ Cancel</button>
           </div>
         </form>
       </div>
@@ -160,15 +160,14 @@
   </main>
 
   <script>
-    const API_URL = 'http://localhost:5000/api/records';
+    const API_URL = '/api/records';
+    const API_BASE = '';
 
     function switchTab(tabId) {
       document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
       document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-
       const targetBtn = document.querySelector(`[data-tab="${tabId}"]`);
       const targetContent = document.getElementById(tabId);
-      
       if(targetBtn && targetContent) {
         targetBtn.classList.add('active');
         targetContent.classList.add('active');
@@ -179,13 +178,22 @@
       button.addEventListener('click', () => switchTab(button.getAttribute('data-tab')));
     });
 
-    function resetAddRecordForm() {
+    function resetForm() {
       document.getElementById('addRecordForm').reset();
       document.getElementById('calculatedUsage').innerText = '0 m³';
       document.getElementById('calculatedTotal').innerText = 'TZS 0';
+      document.getElementById('previousReading').value = '';
+      document.getElementById('currentReading').value = '';
     }
 
-    function logout() { alert('Logging out...'); }
+    async function logout() {
+      try {
+        await fetch('/api/logout', { method: 'POST', credentials: 'include' });
+        window.location.href = '/login';
+      } catch(err) {
+        window.location.href = '/login';
+      }
+    }
 
     const prevInput = document.getElementById('previousReading');
     const currInput = document.getElementById('currentReading');
@@ -195,17 +203,13 @@
     function calculateLive() {
       const prev = parseFloat(prevInput.value) || 0;
       const curr = parseFloat(currInput.value) || 0;
-      const rate = parseFloat(rateInput.value) || 0;
+      const rate = parseFloat(rateInput.value) || 2000;
       const fixed = parseFloat(fixedInput.value) || 0;
-
       let usage = curr - prev;
       if (usage < 0) usage = 0;
-
       const total = (usage * rate) + fixed;
-
       document.getElementById('calculatedUsage').innerText = `${usage.toFixed(1)} m³`;
       document.getElementById('calculatedTotal').innerText = `TZS ${total.toLocaleString()}`;
-      
       return { usage, total };
     }
 
@@ -213,146 +217,107 @@
       input.addEventListener('input', calculateLive);
     });
 
-    // Kazi ya kutengeneza na kufungua Local SMS application
-    function sendLocalSMS(name, phone, prev, curr, usage, total, date) {
+    function sendSMS(name, phone, prev, curr, usage, total, date) {
       if(!phone || phone.trim() === "" || phone === "-") {
-        alert("Mteja huyu hana namba ya simu!");
+        alert("❌ No phone number available for this customer!");
         return;
       }
-
-      // Ujumbe maalum uliojipanga vizuri
-      const messageBody = `Ndugu ${name},\nBili yako ya maji ya tarehe ${date}:\n` +
-                          `- Unit ya mwanzo: ${prev} m³\n` +
-                          `- Unit ya sasa: ${curr} m³\n` +
-                          `- Matumizi (Usage): ${usage.toFixed(1)} m³\n` +
-                          `- JUMLA YA BILI: TZS ${total.toLocaleString()}\n` +
-                          `Asante.`;
-
-      // Code kwa ajili ya URL encoding ili kuzuia matatizo ya nafasi (spaces) au herufi mpya
-      const encodedMessage = encodeURIComponent(messageBody);
-      
-      // Hii inafungua app ya SMS ya simu/pc moja kwa moja
+      const message = `Ndugu ${name},\nBili yako ya maji ya tarehe ${date}:\n` +
+                      `Matumizi: ${usage.toFixed(1)} m³\n` +
+                      `JUMLA: TZS ${total.toLocaleString()}\n` +
+                      `Asante.`;
+      const encodedMessage = encodeURIComponent(message);
       window.location.href = `sms:${phone}?body=${encodedMessage}`;
     }
 
-    // KUSOMA DATA KUTOKA MONGODB
-    async function fetchRecordsFromServer() {
+    async function fetchRecords() {
       const tbody = document.getElementById('recordsBody');
-      
       try {
-        const response = await fetch(API_URL);
-        if (!response.ok) throw new Error('Seva imeshindwa kujibu');
-        
+        const response = await fetch(API_URL, { credentials: 'include' });
+        if (!response.ok) throw new Error('Failed to fetch');
         const records = await response.json();
         tbody.innerHTML = '';
-
         if (records.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="8" class="empty">Hakuna taarifa kwenye MongoDB. Bonyeza "Add Record" kuongeza.</td></tr>`;
-          updateSummaryCards(0, 0, 0);
+          tbody.innerHTML = `<tr><td colspan="8" class="empty">No records found. Click "Add Record" to create one.</td></tr>`;
+          updateSummary(0, 0, 0);
           return;
         }
-
-        let totalUsageSum = 0;
-        let totalAmountSum = 0;
-
+        let totalUsage = 0, totalAmount = 0;
         records.forEach(rec => {
-          totalUsageSum += rec.usage;
-          totalAmountSum += rec.total;
-
+          totalUsage += rec.usage;
+          totalAmount += rec.total;
           const row = document.createElement('tr');
           row.innerHTML = `
-            <td>${rec.date}</td>
-            <td>${rec.name}</td>
+            <td>${rec.date || '-'}</td>
+            <td><strong>${rec.name}</strong></td>
             <td>${rec.phone || '-'}</td>
             <td>${rec.prev}</td>
             <td>${rec.curr}</td>
             <td>${rec.usage.toFixed(1)} m³</td>
             <td>TZS ${rec.total.toLocaleString()}</td>
-            <td>
-              <button class="btn-sms" onclick="sendLocalSMS('${rec.name}', '${rec.phone}', ${rec.prev}, ${rec.curr}, ${rec.usage}, ${rec.total}, '${rec.date}')">
-                Send SMS
-              </button>
-            </td>
+            <td><button class="btn-sms" onclick="sendSMS('${rec.name}', '${rec.phone}', ${rec.prev}, ${rec.curr}, ${rec.usage}, ${rec.total}, '${rec.date}')">📱 Send SMS</button></td>
           `;
           tbody.appendChild(row);
         });
-
-        updateSummaryCards(records.length, totalUsageSum, totalAmountSum);
-
+        updateSummary(records.length, totalUsage, totalAmount);
       } catch (error) {
-        console.error('Error fetching data:', error);
-        tbody.innerHTML = `<tr><td colspan="8" class="empty" style="color:var(--error)">Imeshindwa kuunganisha na seva au MongoDB!</td></tr>`;
+        console.error('Error:', error);
+        tbody.innerHTML = `<tr><td colspan="8" class="empty" style="color:var(--error)">❌ Error loading records. Make sure server is running.</td></tr>`;
       }
     }
 
-    function updateSummaryCards(count, usage, amount) {
+    function updateSummary(count, usage, amount) {
       document.getElementById('recordCount').innerText = count;
       document.getElementById('totalUsage').innerText = `${usage.toFixed(1)} m³`;
       document.getElementById('totalAmount').innerText = `TZS ${amount.toLocaleString()}`;
     }
 
-    // KUSAVE DATA KWENYE MONGODB
     document.getElementById('addRecordForm').addEventListener('submit', async function(e) {
       e.preventDefault();
-
       const name = document.getElementById('customerName').value;
       const phone = document.getElementById('phoneNumber').value;
       const prev = parseFloat(prevInput.value) || 0;
       const curr = parseFloat(currInput.value) || 0;
       const saveBtn = document.getElementById('saveBtn');
-      
       if (curr < prev) {
-        alert('Makosa: Current reading haiwezi kuwa ndogo kuliko Previous reading!');
+        alert('❌ Current reading cannot be less than previous reading!');
         return;
       }
-
-      const calcs = calculateLive();
+      const { usage, total } = calculateLive();
       const today = new Date().toLocaleDateString('en-GB');
-
-      const payload = {
-        date: today,
-        name: name,
-        phone: phone,
-        prev: prev,
-        curr: curr,
-        usage: calcs.usage,
-        total: calcs.total
-      };
-
+      const payload = { date: today, name, phone, prev, curr, usage, total };
       try {
         saveBtn.disabled = true;
-        saveBtn.innerText = "Inasave...";
-
+        saveBtn.innerText = "Saving...";
         const response = await fetch(API_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
+          body: JSON.stringify(payload),
+          credentials: 'include'
         });
-
         if (response.ok) {
           const msgDiv = document.getElementById('message');
           msgDiv.className = "message success";
-          msgDiv.innerText = "Taarifa imehifadhiwa kwenye MongoDB salama!";
+          msgDiv.innerText = "✅ Record saved successfully!";
           msgDiv.style.display = "block";
-          setTimeout(() => { msgDiv.style.display = "none"; }, 4000);
-
-          resetAddRecordForm();
-          await fetchRecordsFromServer();
+          setTimeout(() => msgDiv.style.display = "none", 3000);
+          resetForm();
+          await fetchRecords();
           switchTab('view-records');
         } else {
-          alert('Seva imeshindwa kuhifadhi data.');
+          alert('❌ Failed to save record');
         }
       } catch (error) {
-        console.error('Error saving:', error);
-        alert('Hitilafu ya mtandao: Hakikisha Node.js backend yako inarun!');
+        console.error('Error:', error);
+        alert('❌ Network error. Make sure server is running on port 5000');
       } finally {
         saveBtn.disabled = false;
-        saveBtn.innerText = "Save Record";
+        saveBtn.innerText = "💾 Save Record";
       }
     });
 
-    document.getElementById('refreshBtn').addEventListener('click', fetchRecordsFromServer);
-    window.onload = fetchRecordsFromServer;
+    document.getElementById('refreshBtn').addEventListener('click', fetchRecords);
+    window.onload = fetchRecords;
   </script>
 </body>
 </html>
