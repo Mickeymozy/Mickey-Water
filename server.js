@@ -27,14 +27,19 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/water_
 let isMongoDBConnected = false;
 
 mongoose.connect(MONGODB_URI)
-  .then(() => { isMongoDBConnected = true; console.log('🟢 MongoDB Connected Successfully!'); })
-  .catch((err) => { console.error('❌ MongoDB Connection Failed:', err.message); });
+  .then(() => { 
+    isMongoDBConnected = true; 
+    console.log('🟢 MongoDB Connected Successfully!'); 
+  })
+  .catch((err) => { 
+    console.error('❌ MongoDB Connection Failed:', err.message); 
+  });
 
 // Schemas & Models
 const UserSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
-  password: { type: String, required: true }, // Katika uzalishaji, tumia bcrypt kusimbika (hash) password
+  password: { type: String, required: true },
   role: { type: String, default: 'user' },
   createdAt: { type: Date, default: Date.now }
 });
@@ -84,7 +89,7 @@ app.post('/api/signup', async (req, res) => {
   }
 });
 
-// 2. Login Route (Inashughulikia Admin na Watumiaji wa Kawaida)
+// 2. Login Route
 app.post('/api/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -95,7 +100,6 @@ app.post('/api/login', async (req, res) => {
       return res.json({ success: true, redirect: '/records', user: req.session.user });
     }
 
-    // Kama si admin, mtafute kwenye MongoDB
     if (!isMongoDBConnected) return res.status(500).json({ error: 'Database is offline. Cannot authenticate.' });
     
     const user = await User.findOne({ email, password });
@@ -123,7 +127,7 @@ app.post('/api/logout', (req, res) => {
   req.session.destroy(() => res.json({ success: true }));
 });
 
-// 3. Records API (Online First - Mongoose Controlled)
+// 3. Records API (Online First)
 app.get('/api/records', requireAuth, async (req, res) => {
   try {
     if (isMongoDBConnected) {
@@ -166,11 +170,32 @@ app.delete('/api/records/:id', requireAuth, async (req, res) => {
 });
 
 // --- HTML PAGE RENDERING ROUTES ---
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'login.html')));
-app.get('/login', (req, res) => res.sendFile(path.join(__dirname, 'login.html')));
-app.get('/signup', (req, res) => res.sendFile(path.join(__dirname, 'signup.html')));
-app.get('/records', requireAuth, (req, res) => res.sendFile(path.join(__dirname, 'records.html')));
-app.get('/admin', requireAuth, (req, res) => res.sendFile(path.join(__dirname, 'admin.html')));
+
+// Mtu akifungua link tu, itampeleka login.html moja kwa moja
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'login.html'));
+});
+
+app.get('/login', (req, res) => {
+  res.sendFile(path.join(__dirname, 'login.html'));
+});
+
+app.get('/signup', (req, res) => {
+  res.sendFile(path.join(__dirname, 'signup.html'));
+});
+
+app.get('/records', requireAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, 'records.html'));
+});
+
+app.get('/admin', requireAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, 'admin.html'));
+});
+
+// 404 Error Handler kwa page zisizopo
+app.use((req, res) => {
+  res.status(404).json({ error: 'Endpoint or Page not found' });
+});
 
 app.listen(PORT, () => console.log(`🚀 Server running online on port ${PORT}`));
 
