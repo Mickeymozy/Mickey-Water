@@ -1,286 +1,418 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Water Billing System - Login</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
-
-        .container {
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            overflow: hidden;
-            width: 100%;
-            max-width: 450px;
-            animation: slideIn 0.5s ease-out;
-        }
-
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(-30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 40px;
-            text-align: center;
-        }
-
-        .header h1 {
-            font-size: 2em;
-            margin-bottom: 10px;
-        }
-
-        .header p {
-            opacity: 0.9;
-            font-size: 0.9em;
-        }
-
-        .content {
-            padding: 40px;
-        }
-
-        .admin-bypass {
-            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
-            border-radius: 10px;
-            padding: 3px;
-            margin-bottom: 30px;
-        }
-
-        .admin-btn {
-            width: 100%;
-            background: white;
-            border: none;
-            border-radius: 8px;
-            padding: 15px;
-            font-size: 1.1em;
-            font-weight: bold;
-            color: #ee5a24;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-        }
-
-        .admin-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(238, 90, 36, 0.3);
-        }
-
-        .admin-btn:active {
-            transform: translateY(0);
-        }
-
-        .divider {
-            text-align: center;
-            margin: 20px 0;
-            position: relative;
-        }
-
-        .divider::before,
-        .divider::after {
-            content: '';
-            position: absolute;
-            top: 50%;
-            width: 45%;
-            height: 1px;
-            background: #e0e0e0;
-        }
-
-        .divider::before {
-            left: 0;
-        }
-
-        .divider::after {
-            right: 0;
-        }
-
-        .divider span {
-            background: white;
-            padding: 0 15px;
-            color: #999;
-            font-size: 0.9em;
-        }
-
-        .message {
-            margin-top: 20px;
-            padding: 12px;
-            border-radius: 8px;
-            text-align: center;
-            display: none;
-        }
-
-        .message.error {
-            background: #fee;
-            color: #c33;
-            border-left: 4px solid #c33;
-            display: block;
-        }
-
-        .message.success {
-            background: #efe;
-            color: #3c3;
-            border-left: 4px solid #3c3;
-            display: block;
-        }
-
-        .loading {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid rgba(255,255,255,.3);
-            border-radius: 50%;
-            border-top-color: white;
-            animation: spin 0.8s linear infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        .btn-icon {
-            font-size: 1.2em;
-        }
-
-        .info-text {
-            text-align: center;
-            margin-top: 20px;
-            color: #999;
-            font-size: 0.85em;
-        }
-
-        @media (max-width: 480px) {
-            .container {
-                margin: 20px;
-            }
-            
-            .content {
-                padding: 30px;
-            }
-            
-            .header {
-                padding: 30px;
-            }
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Water Billing - Records Management</title>
+  <style>
+    :root { --bg:#0f172a; --surface:#111827; --text:#e2e8f0; --muted:#94a3b8; --border:#334155; --primary:#38bdf8; --accent:#2563eb; --success:#22c55e; --error:#f87171; --warning:#f59e0b; }
+    *{box-sizing:border-box;}
+    body{margin:0;min-height:100vh;font-family:system-ui,sans-serif;background:linear-gradient(135deg,#030711 0%,#0f172a 100%);color:var(--text);}
+    header{padding:20px 24px;display:flex;justify-content:space-between;align-items:center;background:rgba(15,23,42,.92);border-bottom:1px solid rgba(148,163,184,.12);flex-wrap:wrap;gap:15px;}
+    header h1{margin:0;font-size:1.6rem;}
+    header .actions{display:flex;gap:12px;}
+    header button, header a{border:none;border-radius:12px;padding:10px 16px;font-weight:700;background:rgba(56,189,248,.14);color:var(--text);text-decoration:none;cursor:pointer;transition:.2s;}
+    header button:hover, header a:hover{background:rgba(56,189,248,.22);}
+    main{padding:24px;max-width:1400px;margin:0 auto;display:grid;gap:20px;}
+    .tabs{display:flex;gap:8px;border-bottom:2px solid var(--border);margin-bottom:12px;flex-wrap:wrap;}
+    .tab-btn{border:none;background:none;color:var(--muted);padding:14px 20px;font-size:1rem;font-weight:600;cursor:pointer;border-bottom:3px solid transparent;transition:.2s;position:relative;bottom:-2px;}
+    .tab-btn:hover{color:var(--text);}
+    .tab-btn.active{color:var(--primary);border-bottom-color:var(--primary);}
+    .tab-content{display:none;}
+    .tab-content.active{display:block;}
+    .summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:20px;}
+    .metric{padding:18px;border-radius:18px;background:var(--surface);border:1px solid var(--border);}
+    .metric span{font-size:0.85rem;color:var(--muted);}
+    .metric strong{display:block;font-size:1.9rem;margin-top:10px;color:#fff;}
+    .table-wrap{overflow-x:auto;background:var(--surface);border:1px solid var(--border);border-radius:20px;}
+    table{width:100%;border-collapse:collapse;min-width:800px;}
+    th,td{padding:14px 16px;text-align:left;border-bottom:1px solid rgba(148,163,184,.1);}
+    th{color:var(--muted);text-transform:uppercase;font-size:.78rem;letter-spacing:.08em;}
+    td{color:#f8fafc;}
+    .empty{padding:40px;text-align:center;color:var(--muted);}
+    .message{padding:16px 18px;border-radius:16px;background:rgba(56,189,248,.12);color:#cffafe;display:none;margin-bottom:20px;}
+    .message.error{background:rgba(248,113,113,.12);color:#fca5a5;}
+    .message.success{background:rgba(34,197,94,.12);color:#86efac;}
+    .message.warning{background:rgba(245,158,11,.12);color:#fcd34d;}
+    .form-group{margin-bottom:20px;}
+    .form-group label{display:block;margin-bottom:8px;font-weight:600;color:var(--text);}
+    .form-group input{width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:12px;background:rgba(15,23,42,.8);color:var(--text);font-family:inherit;font-size:1rem;transition:.2s;}
+    .form-group input:focus{outline:none;border-color:var(--primary);background:rgba(15,23,42,.9);}
+    .form-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px;}
+    .form-section{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:24px;}
+    .calculation-display{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:12px;margin-bottom:20px;}
+    .calc-item{padding:12px;border-radius:12px;background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.2);}
+    .calc-label{font-size:.85rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;}
+    .calc-value{display:block;font-size:1.6rem;font-weight:700;color:var(--primary);margin-top:6px;}
+    .form-actions{display:flex;gap:12px;margin-top:24px;flex-wrap:wrap;}
+    .btn{border:none;border-radius:12px;padding:12px 24px;font-weight:700;cursor:pointer;transition:.2s;font-size:1rem;}
+    .btn-primary{background:rgba(56,189,248,.24);color:var(--text);border:1px solid var(--primary);}
+    .btn-primary:hover{background:rgba(56,189,248,.32);}
+    .btn-success{background:rgba(34,197,94,.24);color:#86efac;border:1px solid var(--success);}
+    .btn-success:hover{background:rgba(34,197,94,.35);}
+    .btn-secondary{background:rgba(148,163,184,.12);color:var(--text);border:1px solid var(--border);}
+    .btn-secondary:hover{background:rgba(148,163,184,.2);}
+    .btn-danger{background:rgba(248,113,113,.12);color:#fca5a5;border:1px solid rgba(248,113,113,.3);}
+    .btn-danger:hover{background:rgba(248,113,113,.2);}
+    .required::after{content:" *";color:var(--error);}
+    .sms-option{margin:15px 0;padding:15px;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:12px;}
+    .sms-option label{display:flex;align-items:center;gap:10px;cursor:pointer;}
+    .sms-option input{width:auto;margin-right:8px;transform:scale(1.2);}
+    .sms-preview{background:rgba(0,0,0,.3);padding:12px;border-radius:10px;margin-top:10px;font-size:0.9rem;font-family:monospace;white-space:pre-wrap;}
+    .btn-sms{background:rgba(34,197,94,.15);color:#86efac;border:1px solid #22c55e;padding:6px 12px;border-radius:8px;cursor:pointer;font-weight:600;transition:.2s;}
+    .btn-sms:hover{background:rgba(34,197,94,.25);transform:scale(1.02);}
+  </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🌊 Water Billing System</h1>
-            <p>Manage water bills efficiently</p>
-        </div>
-        
-        <div class="content">
-            <div class="admin-bypass">
-                <button class="admin-btn" onclick="adminLogin()">
-                    <span class="btn-icon">👨‍💼</span>
-                    Admin Login (One-Click Access)
-                    <span class="btn-icon">⚡</span>
-                </button>
-            </div>
-            
-            <div class="divider">
-                <span>System Info</span>
-            </div>
-            
-            <div class="info-text">
-                <p>💡 <strong>Quick Access:</strong> Click the <strong>Admin Login</strong> button above to access the system instantly.</p>
-                <p style="margin-top: 10px;">📱 Features: Save records & auto-send SMS to customers</p>
-                <p style="margin-top: 10px;">🔧 Server: Node.js + Express (In-Memory Storage)</p>
-            </div>
-            
-            <div id="message" class="message"></div>
-        </div>
+  <header>
+    <div>
+      <h1>🌊 Water Billing Records</h1>
+      <p style="margin:8px 0 0;color:var(--muted);">Manage water meter readings and billing records</p>
+    </div>
+    <div class="actions">
+      <button id="refreshBtn">🔄 Refresh</button>
+      <button onclick="logout()">🚪 Logout</button>
+    </div>
+  </header>
+  <main>
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="view-records">📋 View Records</button>
+      <button class="tab-btn" data-tab="add-record">➕ Add Record & Send SMS</button>
     </div>
 
-    <script>
-        const API_BASE = 'http://localhost:5000';
+    <div id="view-records" class="tab-content active">
+      <div class="summary">
+        <div class="metric"><span>Total Records</span><strong id="recordCount">0</strong></div>
+        <div class="metric"><span>Total Usage</span><strong id="totalUsage">0 m³</strong></div>
+        <div class="metric"><span>Total Amount</span><strong id="totalAmount">TZS 0</strong></div>
+      </div>
+      <div id="message" class="message">Loading records from server...</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Name</th>
+              <th>Phone</th>
+              <th>Prev (m³)</th>
+              <th>Curr (m³)</th>
+              <th>Usage (m³)</th>
+              <th>Total (TZS)</th>
+              <th>SMS</th>
+            </tr>
+          </thead>
+          <tbody id="recordsBody">
+            <tr><td colspan="8" class="empty">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="add-record" class="tab-content">
+      <div class="form-section">
+        <h2 style="margin-top:0;margin-bottom:24px;">➕ Create New Billing Record</h2>
+        <form id="addRecordForm">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="customerName" class="required">Customer Name</label>
+              <input type="text" id="customerName" required placeholder="Enter customer name">
+            </div>
+            <div class="form-group">
+              <label for="phoneNumber">Phone Number (for SMS)</label>
+              <input type="tel" id="phoneNumber" placeholder="e.g., 0712345678">
+              <small style="color:var(--muted);display:block;margin-top:5px;">📱 If provided, SMS will be sent automatically</small>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="previousReading" class="required">Previous Reading (m³)</label>
+              <input type="number" id="previousReading" min="0" step="0.1" required placeholder="0">
+            </div>
+            <div class="form-group">
+              <label for="currentReading" class="required">Current Reading (m³)</label>
+              <input type="number" id="currentReading" min="0" step="0.1" required placeholder="0">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="ratePerUnit">Rate (TZS per m³)</label>
+              <input type="number" id="ratePerUnit" min="0" step="1" value="2000">
+            </div>
+            <div class="form-group">
+              <label for="fixedCharge">Fixed Charge (TZS)</label>
+              <input type="number" id="fixedCharge" min="0" step="1" value="0">
+            </div>
+          </div>
+
+          <div class="calculation-display">
+            <div class="calc-item">
+              <div class="calc-label">Usage</div>
+              <div class="calc-value" id="calculatedUsage">0 m³</div>
+            </div>
+            <div class="calc-item">
+              <div class="calc-label">Total Amount</div>
+              <div class="calc-value" id="calculatedTotal">TZS 0</div>
+            </div>
+          </div>
+
+          <!-- SMS Option Section -->
+          <div class="sms-option">
+            <label>
+              <input type="checkbox" id="sendSmsCheckbox" checked>
+              <strong>📱 Send SMS to customer after saving</strong>
+            </label>
+            <div id="smsPreview" class="sms-preview" style="display:none;"></div>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" id="saveBtn" class="btn btn-success">
+              💾 Save Record & Send SMS
+            </button>
+            <button type="button" class="btn btn-secondary" onclick="resetForm()">🗑️ Clear Form</button>
+            <button type="button" class="btn btn-danger" onclick="switchTab('view-records')">❌ Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const API_URL = '/api/records';
+
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+      const targetBtn = document.querySelector(`[data-tab="${tabId}"]`);
+      const targetContent = document.getElementById(tabId);
+      if(targetBtn && targetContent) {
+        targetBtn.classList.add('active');
+        targetContent.classList.add('active');
+      }
+      if(tabId === 'add-record') {
+        updateSmsPreview();
+      }
+    }
+
+    document.querySelectorAll('.tab-btn').forEach(button => {
+      button.addEventListener('click', () => switchTab(button.getAttribute('data-tab')));
+    });
+
+    function resetForm() {
+      document.getElementById('addRecordForm').reset();
+      document.getElementById('calculatedUsage').innerText = '0 m³';
+      document.getElementById('calculatedTotal').innerText = 'TZS 0';
+      document.getElementById('previousReading').value = '';
+      document.getElementById('currentReading').value = '';
+      document.getElementById('ratePerUnit').value = '2000';
+      document.getElementById('fixedCharge').value = '0';
+      document.getElementById('sendSmsCheckbox').checked = true;
+      document.getElementById('smsPreview').style.display = 'none';
+    }
+
+    async function logout() {
+      try {
+        await fetch('/api/logout', { method: 'POST', credentials: 'include' });
+        window.location.href = '/login';
+      } catch(err) {
+        window.location.href = '/login';
+      }
+    }
+
+    const prevInput = document.getElementById('previousReading');
+    const currInput = document.getElementById('currentReading');
+    const rateInput = document.getElementById('ratePerUnit');
+    const fixedInput = document.getElementById('fixedCharge');
+
+    function calculateLive() {
+      const prev = parseFloat(prevInput.value) || 0;
+      const curr = parseFloat(currInput.value) || 0;
+      const rate = parseFloat(rateInput.value) || 2000;
+      const fixed = parseFloat(fixedInput.value) || 0;
+      let usage = curr - prev;
+      if (usage < 0) usage = 0;
+      const total = (usage * rate) + fixed;
+      document.getElementById('calculatedUsage').innerText = `${usage.toFixed(1)} m³`;
+      document.getElementById('calculatedTotal').innerText = `TZS ${total.toLocaleString()}`;
+      return { usage, total };
+    }
+
+    function updateSmsPreview() {
+      const name = document.getElementById('customerName').value;
+      const phone = document.getElementById('phoneNumber').value;
+      const prev = parseFloat(prevInput.value) || 0;
+      const curr = parseFloat(currInput.value) || 0;
+      const { usage, total } = calculateLive();
+      const date = new Date().toLocaleDateString('en-GB');
+      
+      if(name && (prev > 0 || curr > 0)) {
+        const message = `Ndugu ${name},\n\nBili yako ya maji ya tarehe ${date}:\n\n` +
+                        `✓ Matumizi: ${usage.toFixed(1)} m³\n` +
+                        `✓ Jumla ya Bili: TZS ${total.toLocaleString()}\n\n` +
+                        `Asante kwa ushirikiano wako.\n` +
+                        `Water Billing System`;
         
-        async function adminLogin() {
-            const messageDiv = document.getElementById('message');
-            const adminBtn = document.querySelector('.admin-btn');
-            
-            const originalText = adminBtn.innerHTML;
-            adminBtn.innerHTML = '<span class="loading"></span> Logging in...';
-            adminBtn.disabled = true;
-            
-            try {
-                const response = await fetch(`${API_BASE}/api/admin-login`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include'
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    messageDiv.className = 'message success';
-                    messageDiv.textContent = '✅ Login successful! Redirecting to dashboard...';
-                    messageDiv.style.display = 'block';
-                    
-                    setTimeout(() => {
-                        window.location.href = `${API_BASE}/records`;
-                    }, 1000);
-                } else {
-                    throw new Error(data.error || 'Login failed');
-                }
-            } catch (error) {
-                console.error('Login error:', error);
-                messageDiv.className = 'message error';
-                messageDiv.textContent = '❌ Cannot connect to server. Make sure server is running on port 5000';
-                messageDiv.style.display = 'block';
-                
-                adminBtn.innerHTML = originalText;
-                adminBtn.disabled = false;
-            }
+        const previewDiv = document.getElementById('smsPreview');
+        previewDiv.innerHTML = `<strong>📱 SMS Preview ${phone ? `(to: ${phone})` : '(no phone number)'}:</strong><br>${message.replace(/\n/g, '<br>')}`;
+        previewDiv.style.display = 'block';
+      } else {
+        document.getElementById('smsPreview').style.display = 'none';
+      }
+    }
+
+    [prevInput, currInput, rateInput, fixedInput].forEach(input => {
+      input.addEventListener('input', () => {
+        calculateLive();
+        updateSmsPreview();
+      });
+    });
+
+    document.getElementById('customerName').addEventListener('input', updateSmsPreview);
+    document.getElementById('phoneNumber').addEventListener('input', updateSmsPreview);
+
+    function sendSMS(name, phone, prev, curr, usage, total, date) {
+      return new Promise((resolve) => {
+        if(!phone || phone.trim() === "" || phone === "-") {
+          console.log('No phone number provided');
+          resolve({ success: false, error: 'No phone number' });
+          return;
         }
         
-        async function checkSession() {
-            try {
-                const response = await fetch(`${API_BASE}/api/me`, { credentials: 'include' });
-                const data = await response.json();
-                if (data.authenticated) {
-                    window.location.href = `${API_BASE}/records`;
-                }
-            } catch (error) {
-                console.log('Not logged in');
-            }
+        const message = `Ndugu ${name},\n\nBili yako ya maji ya tarehe ${date}:\n\n` +
+                        `✓ Matumizi: ${usage.toFixed(1)} m³\n` +
+                        `✓ Jumla ya Bili: TZS ${total.toLocaleString()}\n\n` +
+                        `Asante kwa ushirikiano wako.\n` +
+                        `Water Billing System`;
+        
+        const encodedMessage = encodeURIComponent(message);
+        window.open(`sms:${phone}?body=${encodedMessage}`, '_blank');
+        resolve({ success: true, message: 'SMS app opened' });
+      });
+    }
+
+    async function fetchRecords() {
+      const tbody = document.getElementById('recordsBody');
+      try {
+        const response = await fetch(API_URL, { credentials: 'include' });
+        if (!response.ok) throw new Error('Failed to fetch');
+        const records = await response.json();
+        tbody.innerHTML = '';
+        if (records.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="8" class="empty">No records found. Click "Add Record" to create one.</td></tr>`;
+          updateSummary(0, 0, 0);
+          return;
         }
-        
-        checkSession();
-        
-        document.addEventListener('keydown', (e) => {
-            if (e.ctrlKey && e.shiftKey && e.key === 'A') {
-                e.preventDefault();
-                adminLogin();
-            }
+        let totalUsage = 0, totalAmount = 0;
+        records.forEach(rec => {
+          totalUsage += rec.usage;
+          totalAmount += rec.total;
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${rec.date || '-'}</td>
+            <td><strong>${rec.name}</strong></td>
+            <td>${rec.phone || '-'}</td>
+            <td>${rec.prev}</td>
+            <td>${rec.curr}</td>
+            <td>${rec.usage.toFixed(1)} m³</td>
+            <td>TZS ${rec.total.toLocaleString()}</td>
+            <td><button class="btn-sms" onclick="resendSMS(${rec.id}, '${rec.name}', '${rec.phone}', ${rec.prev}, ${rec.curr}, ${rec.usage}, ${rec.total}, '${rec.date}')">📱 Resend SMS</button></td>
+          `;
+          tbody.appendChild(row);
         });
-    </script>
+        updateSummary(records.length, totalUsage, totalAmount);
+      } catch (error) {
+        console.error('Error:', error);
+        tbody.innerHTML = `<tr><td colspan="8" class="empty" style="color:var(--error)">❌ Error loading records. Make sure server is running on port 3000.</td></tr>`;
+      }
+    }
+
+    function resendSMS(id, name, phone, prev, curr, usage, total, date) {
+      if(!phone || phone === '-') {
+        showMessage('No phone number available for this customer!', 'warning');
+        return;
+      }
+      sendSMS(name, phone, prev, curr, usage, total, date);
+      showMessage(`📱 Opening SMS app for ${name}...`, 'success');
+    }
+
+    function updateSummary(count, usage, amount) {
+      document.getElementById('recordCount').innerText = count;
+      document.getElementById('totalUsage').innerText = `${usage.toFixed(1)} m³`;
+      document.getElementById('totalAmount').innerText = `TZS ${amount.toLocaleString()}`;
+    }
+
+    function showMessage(msg, type = 'success') {
+      const msgDiv = document.getElementById('message');
+      msgDiv.className = `message ${type}`;
+      msgDiv.innerText = msg;
+      msgDiv.style.display = 'block';
+      setTimeout(() => msgDiv.style.display = 'none', 4000);
+    }
+
+    document.getElementById('addRecordForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const name = document.getElementById('customerName').value;
+      const phone = document.getElementById('phoneNumber').value;
+      const prev = parseFloat(prevInput.value) || 0;
+      const curr = parseFloat(currInput.value) || 0;
+      const sendSms = document.getElementById('sendSmsCheckbox').checked;
+      const saveBtn = document.getElementById('saveBtn');
+      
+      if (!name) {
+        alert('❌ Please enter customer name');
+        return;
+      }
+      if (curr < prev) {
+        alert('❌ Current reading cannot be less than previous reading!');
+        return;
+      }
+      
+      const { usage, total } = calculateLive();
+      const today = new Date().toLocaleDateString('en-GB');
+      const payload = { date: today, name, phone: phone || '-', prev, curr, usage, total };
+      
+      try {
+        saveBtn.disabled = true;
+        saveBtn.innerText = "💾 Saving...";
+        
+        const response = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          credentials: 'include'
+        });
+        
+        if (response.ok) {
+          const newRecord = await response.json();
+          showMessage(`✅ Record saved successfully for ${name}!`, 'success');
+          
+          if (sendSms && phone && phone !== '-') {
+            showMessage(`📱 Opening SMS app to send bill to ${phone}...`, 'success');
+            await sendSMS(name, phone, prev, curr, usage, total, today);
+          } else if (sendSms && (!phone || phone === '-')) {
+            showMessage(`⚠️ Record saved but no phone number provided for SMS`, 'warning');
+          }
+          
+          resetForm();
+          await fetchRecords();
+          switchTab('view-records');
+        } else {
+          const error = await response.json();
+          showMessage(`❌ Failed to save: ${error.error || 'Unknown error'}`, 'error');
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        showMessage('❌ Network error. Make sure server is running on port 3000', 'error');
+      } finally {
+        saveBtn.disabled = false;
+        saveBtn.innerText = "💾 Save Record & Send SMS";
+      }
+    });
+
+    document.getElementById('refreshBtn').addEventListener('click', fetchRecords);
+    
+    window.onload = fetchRecords;
+  </script>
 </body>
 </html>
