@@ -59,6 +59,17 @@ app.use((req, res, next) => {
   next();
 });
 
+// ================== REQUEST LOGGING ==================
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    const statusColor = res.statusCode < 400 ? '✅' : res.statusCode < 500 ? '⚠️ ' : '❌';
+    console.log(`${statusColor} ${req.method} ${req.path} - ${res.statusCode} (${duration}ms)`);
+  });
+  next();
+});
+
 // ================== PERFORMANCE OPTIMIZATIONS ==================
 app.use(compression({ threshold: 1024, level: 6 }));
 
@@ -302,28 +313,40 @@ app.get('/health', (req, res) => {
 });
 
 // ================== SERVE HTML PAGES ==================
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
+app.get('/', (req, res, next) => {
+  res.sendFile(path.join(__dirname, 'index.html'), (err) => {
+    if (err) next(err);
+  });
 });
 
-app.get('/login', (req, res) => {
-  res.sendFile(path.join(__dirname, 'login.html'));
+app.get('/login', (req, res, next) => {
+  res.sendFile(path.join(__dirname, 'login.html'), (err) => {
+    if (err) next(err);
+  });
 });
 
-app.get('/signup', (req, res) => {
-  res.sendFile(path.join(__dirname, 'signup.html'));
+app.get('/signup', (req, res, next) => {
+  res.sendFile(path.join(__dirname, 'signup.html'), (err) => {
+    if (err) next(err);
+  });
 });
 
-app.get('/admin', (req, res) => {
-  res.sendFile(path.join(__dirname, 'admin.html'));
+app.get('/admin', (req, res, next) => {
+  res.sendFile(path.join(__dirname, 'admin.html'), (err) => {
+    if (err) next(err);
+  });
 });
 
-app.get('/records', (req, res) => {
-  res.sendFile(path.join(__dirname, 'records.html'));
+app.get('/records', (req, res, next) => {
+  res.sendFile(path.join(__dirname, 'records.html'), (err) => {
+    if (err) next(err);
+  });
 });
 
-app.get('/main', (req, res) => {
-  res.sendFile(path.join(__dirname, 'main.html'));
+app.get('/main', (req, res, next) => {
+  res.sendFile(path.join(__dirname, 'main.html'), (err) => {
+    if (err) next(err);
+  });
 });
 
 app.get('/api/me', (req, res) => {
@@ -661,17 +684,44 @@ app.get('/logout', (req, res) => {
   });
 });
 
+// ================== 404 HANDLER ==================
+app.use((req, res) => {
+  console.warn(`404 - Not Found: ${req.method} ${req.path}`);
+  res.status(404).json({ error: 'Route not found', path: req.path });
+});
+
 // ================== GLOBAL ERROR HANDLER ==================
 app.use((err, req, res, next) => {
-  console.error('Unhandled error:', err);
-  res.status(500).json({ error: 'Internal server error' });
+  console.error('❌ Unhandled error:', err.message || err);
+  console.error('Stack:', err.stack);
+  
+  res.status(500).json({ 
+    error: 'Internal server error',
+    message: process.env.NODE_ENV === 'development' ? err.message : undefined,
+    path: req.path
+  });
 });
 
 // ================== LOCAL START + VERCEL SERVERLESS EXPORT ==================
+const startupLog = () => {
+  console.log('\n');
+  console.log('╔════════════════════════════════════════╗');
+  console.log('║  Water Billing System - Server Ready   ║');
+  console.log('╚════════════════════════════════════════╝');
+  console.log(`\n📍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🌐 URL: http://localhost:${PORT}`);
+  console.log(`🗄️  Database: ${MONGODB_URI.includes('127.0.0.1') ? 'Local MongoDB' : 'MongoDB Atlas'}`);
+  console.log(`✅ Session Store: ${sessionStore.constructor.name}`);
+  console.log('\n');
+};
+
 if (require.main === module) {
   app.listen(PORT, () => {
-    console.log(`Server listening on http://localhost:${PORT}`);
+    startupLog();
   });
+} else {
+  // Vercel startup
+  console.log('🚀 Vercel Serverless Function initialized');
 }
 
 module.exports = app;
