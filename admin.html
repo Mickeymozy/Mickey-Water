@@ -11,6 +11,8 @@
       color: #e2e8f0;
       background: #0b1223;
       accent-color: #38bdf8;
+      --warning: #f59e0b;
+      --success: #22c55e;
     }
 
     * { box-sizing: border-box; }
@@ -38,6 +40,13 @@
       gap: 14px;
       font-weight: 800;
       font-size: 1.1rem;
+    }
+
+    #connectionStatus {
+      font-size: 0.85rem;
+      font-weight: normal;
+      padding: 4px 10px;
+      border-radius: 20px;
     }
 
     nav {
@@ -175,6 +184,19 @@
       border-radius: 16px;
       background: rgba(56, 189, 248, 0.12);
       color: #cbe7ff;
+      border: 1px solid transparent;
+    }
+    
+    .message.error {
+      background: rgba(248, 113, 113, 0.15);
+      color: #fca5a5;
+      border-color: rgba(248, 113, 113, 0.3);
+    }
+
+    .message.success {
+      background: rgba(34, 197, 94, 0.15);
+      color: #86efac;
+      border-color: rgba(34, 197, 94, 0.3);
     }
 
     footer {
@@ -192,7 +214,10 @@
 </head>
 <body>
   <header>
-    <div class="brand">Admin Panel</div>
+    <div class="brand">
+      Admin Panel 
+      <span id="connectionStatus">Checking...</span>
+    </div>
     <nav>
       <a href="index.html">Home</a>
       <a href="botweb.html">Dashboard</a>
@@ -213,7 +238,7 @@
       </div>
       <div class="actions">
         <button class="btn-primary" onclick="refreshStats()">Refresh stats</button>
-        <button class="btn-secondary" onclick="window.location.href='/records.html'">Open records</button>
+        <button class="btn-secondary" onclick="window.location.href='records.html'">Open records</button>
       </div>
       <div id="statusMessage" class="message" style="display:none;"></div>
     </section>
@@ -235,15 +260,134 @@
         </div>
         <div class="actions">
           <button class="btn-primary" type="submit" id="sendBtn">Send notification</button>
-          <button class="btn-secondary" type="button" onclick="showStatus('Use the form to broadcast an announcement.', 'info')">Help</button>
+          <button class="btn-secondary" type="button" onclick="showStatus('Use the form to broadcast an announcement to clients.', 'success')">Help</button>
         </div>
       </form>
     </section>
   </main>
 
-  <script src="/admin.js"></script>
   <footer>© 2026 Water Billing. Admin access only.</footer>
+
+  <script>
+    // Endpoint URL kutoka kwenye server yako
+    const STATS_URL = '/api/admin/stats';
+    const NOTIFY_URL = '/api/admin/notify';
+
+    // Kazi ya kubadilisha muonekano wa kiashiria cha mtandao
+    function setStatusIndicator(offline) {
+      const statusSpan = document.getElementById('connectionStatus');
+      if (offline) {
+        statusSpan.innerText = '⚠️ Offline Mode';
+        statusSpan.style.background = 'rgba(245, 158, 11, 0.2)';
+        statusSpan.style.color = 'var(--warning)';
+      } else {
+        statusSpan.innerText = '🟢 Server Connected';
+        statusSpan.style.background = 'rgba(34, 197, 94, 0.2)';
+        statusSpan.style.color = 'var(--success)';
+      }
+    }
+
+    // Kupata takwimu (Kwanza kutoka MongoDB, ikifeli inaenda LocalStorage)
+    async function refreshStats() {
+      showStatus('Loading system data...', 'success');
+      
+      try {
+        const response = await fetch(STATS_URL, { credentials: 'include' });
+        if (!response.ok) throw new Error('Server returned an error');
+        const data = await response.json();
+        
+        document.getElementById('usersCount').innerText = data.totalUsers || '1'; // Admin mwenyewe
+        document.getElementById('recordsCount').innerText = data.totalRecords || '0';
+        document.getElementById('resetCount').innerText = data.pendingResets || '0';
+        
+        setStatusIndicator(false);
+        showStatus('Stats synchronized with MongoDB successfully.', 'success');
+      } catch (error) {
+        console.warn('Haikuweza kuunganishwa na server. Tunatafuta data kwenye LocalStorage...', error);
+        setStatusIndicator(true);
+        
+        // Kusoma kutoka LocalStorage (Fallback Strategy)
+        const localData = localStorage.getItem('water_records');
+        const records = localData ? JSON.parse(localData) : [];
+        
+        document.getElementById('usersCount').innerText = '1 (Local Admin)';
+        document.getElementById('recordsCount').innerText = records.length;
+        document.getElementById('resetCount').innerText = '0 (Offline)';
+        
+        showStatus('⚠️ Displaying offline cached data from LocalStorage.', 'error');
+      }
+    }
+
+    // Kushughulikia fomu ya kutuma Notifications
+    document.getElementById('notificationForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      
+      const title = document.getElementById('notificationTitle').value;
+      const body = document.getElementById('notificationBody').value;
+      const url = document.getElementById('notificationUrl').value;
+      const sendBtn = document.getElementById('sendBtn');
+      
+      const payload = { title, body, url, timestamp: new Date().toISOString() };
+      
+      sendBtn.disabled = true;
+      sendBtn.innerText = 'Sending...';
+
+      try {
+        const response = await fetch(NOTIFY_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          credentials: 'include'
+        });
+
+        if (response.ok) {
+          showStatus('🚀 Notification broadcasted successfully via server!', 'success');
+          document.getElementById('notificationForm').reset();
+        } else {
+          throw new Error('Server failed to broadcast');
+        }
+      } catch (error) {
+        console.error('Notification error:', error);
+        
+        // Kama iko offline, tunaihifadhi kwenye local storage kama "Draft/Pending"
+        const localAnnouncements = localStorage.getItem('local_notifications') ? JSON.parse(localStorage.getItem('local_notifications')) : [];
+        localAnnouncements.push(payload);
+        localStorage.setItem('local_notifications', JSON.stringify(localAnnouncements));
+        
+        showStatus('⚠️ Server offline! Notification saved locally as draft.', 'error');
+      } finally {
+        sendBtn.disabled = false;
+        sendBtn.innerText = 'Send notification';
+      }
+    });
+
+    // Kazi ya kuonyesha ujumbe wa Alerts chini ya kadi
+    function showStatus(text, type = 'success') {
+      const msgDiv = document.getElementById('statusMessage');
+      msgDiv.innerText = text;
+      msgDiv.className = `message ${type}`;
+      msgDiv.style.display = 'block';
+      
+      // Kuficha ujumbe kiotomatiki baada ya sekunde 5
+      setTimeout(() => {
+        msgDiv.style.display = 'none';
+      }, 5000);
+    }
+
+    // Kazi ya Logout
+    async function logout() {
+      // Futa pia na session za uongo za LocalStorage tulizoweka kwenye login.html
+      localStorage.removeItem('login_mode');
+      try {
+        await fetch('/api/logout', { method: 'POST', credentials: 'include' });
+        window.location.href = 'login.html';
+      } catch(err) {
+        window.location.href = 'login.html';
+      }
+    }
+
+    // Pakia data mara tu ukurasa unapofunguka
+    window.onload = refreshStats;
+  </script>
 </body>
 </html>
-</content>
-<parameter name="filePath">vscode-vfs://github/Mickeydeveloper/water-billing/admin.html
