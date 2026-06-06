@@ -66,7 +66,7 @@
 <body>
   <header>
     <div>
-      <h1>🌊 Water Billing Records</h1>
+      <h1>🌊 Water Billing Records <span id="connectionStatus" style="font-size: 0.9rem; font-weight: normal; margin-left: 10px; padding: 4px 10px; border-radius: 20px;"></span></h1>
       <p style="margin:8px 0 0;color:var(--muted);">Manage water meter readings and billing records</p>
     </div>
     <div class="actions">
@@ -86,7 +86,7 @@
         <div class="metric"><span>Total Usage</span><strong id="totalUsage">0 m³</strong></div>
         <div class="metric"><span>Total Amount</span><strong id="totalAmount">TZS 0</strong></div>
       </div>
-      <div id="message" class="message">Loading records from server...</div>
+      <div id="message" class="message">Loading records...</div>
       <div class="table-wrap">
         <table>
           <thead>
@@ -157,7 +157,6 @@
             </div>
           </div>
 
-          <!-- SMS Option Section -->
           <div class="sms-option">
             <label>
               <input type="checkbox" id="sendSmsCheckbox" checked>
@@ -180,6 +179,22 @@
 
   <script>
     const API_URL = '/api/records';
+    let isOffline = false;
+
+    // Kazi ya kubadilisha muonekano wa Mtandao (Online/Offline)
+    function updateStatusIndicator(offline) {
+      isOffline = offline;
+      const statusSpan = document.getElementById('connectionStatus');
+      if (offline) {
+        statusSpan.innerText = '⚠️ Working Offline (LocalStorage)';
+        statusSpan.style.background = 'rgba(245, 158, 11, 0.2)';
+        statusSpan.style.color = 'var(--warning)';
+      } else {
+        statusSpan.innerText = '🟢 Connected to Server';
+        statusSpan.style.background = 'rgba(34, 197, 94, 0.2)';
+        statusSpan.style.color = 'var(--success)';
+      }
+    }
 
     function switchTab(tabId) {
       document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -245,14 +260,14 @@
       const curr = parseFloat(currInput.value) || 0;
       const { usage, total } = calculateLive();
       const date = new Date().toLocaleDateString('en-GB');
-      
+
       if(name && (prev > 0 || curr > 0)) {
         const message = `Ndugu ${name},\n\nBili yako ya maji ya tarehe ${date}:\n\n` +
                         `✓ Matumizi: ${usage.toFixed(1)} m³\n` +
                         `✓ Jumla ya Bili: TZS ${total.toLocaleString()}\n\n` +
                         `Asante kwa ushirikiano wako.\n` +
                         `Water Billing System`;
-        
+
         const previewDiv = document.getElementById('smsPreview');
         previewDiv.innerHTML = `<strong>📱 SMS Preview ${phone ? `(to: ${phone})` : '(no phone number)'}:</strong><br>${message.replace(/\n/g, '<br>')}`;
         previewDiv.style.display = 'block';
@@ -278,56 +293,64 @@
           resolve({ success: false, error: 'No phone number' });
           return;
         }
-        
+
         const message = `Ndugu ${name},\n\nBili yako ya maji ya tarehe ${date}:\n\n` +
                         `✓ Matumizi: ${usage.toFixed(1)} m³\n` +
                         `✓ Jumla ya Bili: TZS ${total.toLocaleString()}\n\n` +
                         `Asante kwa ushirikiano wako.\n` +
                         `Water Billing System`;
-        
+
         const encodedMessage = encodeURIComponent(message);
         window.open(`sms:${phone}?body=${encodedMessage}`, '_blank');
         resolve({ success: true, message: 'SMS app opened' });
       });
     }
 
+    // Kupata data (MongoDB au LocalStorage)
     async function fetchRecords() {
       const tbody = document.getElementById('recordsBody');
+      let records = [];
+
       try {
         const response = await fetch(API_URL, { credentials: 'include' });
         if (!response.ok) throw new Error('Failed to fetch');
-        const records = await response.json();
-        tbody.innerHTML = '';
-        if (records.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="8" class="empty">No records found. Click "Add Record" to create one.</td></tr>`;
-          updateSummary(0, 0, 0);
-          return;
-        }
-        let totalUsage = 0, totalAmount = 0;
-        records.forEach(rec => {
-          totalUsage += rec.usage;
-          totalAmount += rec.total;
-          const row = document.createElement('tr');
-          row.innerHTML = `
-            <td>${rec.date || '-'}</td>
-            <td><strong>${rec.name}</strong></td>
-            <td>${rec.phone || '-'}</td>
-            <td>${rec.prev}</td>
-            <td>${rec.curr}</td>
-            <td>${rec.usage.toFixed(1)} m³</td>
-            <td>TZS ${rec.total.toLocaleString()}</td>
-            <td><button class="btn-sms" onclick="resendSMS(${rec.id}, '${rec.name}', '${rec.phone}', ${rec.prev}, ${rec.curr}, ${rec.usage}, ${rec.total}, '${rec.date}')">📱 Resend SMS</button></td>
-          `;
-          tbody.appendChild(row);
-        });
-        updateSummary(records.length, totalUsage, totalAmount);
+        records = await response.json();
+        updateStatusIndicator(false); // Tuko online
       } catch (error) {
-        console.error('Error:', error);
-        tbody.innerHTML = `<tr><td colspan="8" class="empty" style="color:var(--error)">❌ Error loading records. Make sure server is running on port 3000.</td></tr>`;
+        console.warn('Server haipatikani, tunasoma kutoka LocalStorage...', error);
+        updateStatusIndicator(true); // Tuko offline
+        const localData = localStorage.getItem('water_records');
+        records = localData ? JSON.parse(localData) : [];
       }
+
+      tbody.innerHTML = '';
+      if (records.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="empty">No records found. Click "Add Record" to create one.</td></tr>`;
+        updateSummary(0, 0, 0);
+        return;
+      }
+
+      let totalUsage = 0, totalAmount = 0;
+      records.forEach((rec, index) => {
+        totalUsage += rec.usage;
+        totalAmount += rec.total;
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${rec.date || '-'}</td>
+          <td><strong>${rec.name}</strong></td>
+          <td>${rec.phone || '-'}</td>
+          <td>${rec.prev}</td>
+          <td>${rec.curr}</td>
+          <td>${rec.usage.toFixed(1)} m³</td>
+          <td>TZS ${rec.total.toLocaleString()}</td>
+          <td><button class="btn-sms" onclick="resendSMS('${rec.name}', '${rec.phone}', ${rec.prev}, ${rec.curr}, ${rec.usage}, ${rec.total}, '${rec.date}')">📱 Resend SMS</button></td>
+        `;
+        tbody.appendChild(row);
+      });
+      updateSummary(records.length, totalUsage, totalAmount);
     }
 
-    function resendSMS(id, name, phone, prev, curr, usage, total, date) {
+    function resendSMS(name, phone, prev, curr, usage, total, date) {
       if(!phone || phone === '-') {
         showMessage('No phone number available for this customer!', 'warning');
         return;
@@ -350,6 +373,7 @@
       setTimeout(() => msgDiv.style.display = 'none', 4000);
     }
 
+    // Kuhifadhi data (MongoDB au LocalStorage)
     document.getElementById('addRecordForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       const name = document.getElementById('customerName').value;
@@ -358,7 +382,7 @@
       const curr = parseFloat(currInput.value) || 0;
       const sendSms = document.getElementById('sendSmsCheckbox').checked;
       const saveBtn = document.getElementById('saveBtn');
-      
+
       if (!name) {
         alert('❌ Please enter customer name');
         return;
@@ -367,51 +391,55 @@
         alert('❌ Current reading cannot be less than previous reading!');
         return;
       }
-      
+
       const { usage, total } = calculateLive();
       const today = new Date().toLocaleDateString('en-GB');
-      const payload = { date: today, name, phone: phone || '-', prev, curr, usage, total };
-      
+      const payload = { id: Date.now(), date: today, name, phone: phone || '-', prev, curr, usage, total };
+
+      saveBtn.disabled = true;
+      saveBtn.innerText = "💾 Saving...";
+
       try {
-        saveBtn.disabled = true;
-        saveBtn.innerText = "💾 Saving...";
-        
+        // Jaribu kusave MongoDB (Server) kwanza
         const response = await fetch(API_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
           credentials: 'include'
         });
-        
+
         if (response.ok) {
-          const newRecord = await response.json();
-          showMessage(`✅ Record saved successfully for ${name}!`, 'success');
-          
-          if (sendSms && phone && phone !== '-') {
-            showMessage(`📱 Opening SMS app to send bill to ${phone}...`, 'success');
-            await sendSMS(name, phone, prev, curr, usage, total, today);
-          } else if (sendSms && (!phone || phone === '-')) {
-            showMessage(`⚠️ Record saved but no phone number provided for SMS`, 'warning');
-          }
-          
-          resetForm();
-          await fetchRecords();
-          switchTab('view-records');
+          showMessage(`✅ Record saved to MongoDB for ${name}!`, 'success');
+          updateStatusIndicator(false);
         } else {
-          const error = await response.json();
-          showMessage(`❌ Failed to save: ${error.error || 'Unknown error'}`, 'error');
+          throw new Error('Server returned error response');
         }
       } catch (error) {
-        console.error('Error:', error);
-        showMessage('❌ Network error. Make sure server is running on port 3000', 'error');
-      } finally {
-        saveBtn.disabled = false;
-        saveBtn.innerText = "💾 Save Record & Send SMS";
+        // Ikikataa, save kwenye LocalStorage
+        console.error('Server failed, saving to LocalStorage...', error);
+        updateStatusIndicator(true);
+
+        const localData = localStorage.getItem('water_records');
+        const currentRecords = localData ? JSON.parse(localData) : [];
+        currentRecords.push(payload);
+        localStorage.setItem('water_records', JSON.stringify(currentRecords));
+
+        showMessage(`⚠️ Server offline! Record saved locally for ${name}.`, 'warning');
       }
+
+      // Sehemu ya kutuma SMS baada ya kufanya maamuzi ya wapi pa kusave
+      if (sendSms && phone && phone !== '-') {
+        await sendSMS(name, phone, prev, curr, usage, total, today);
+      }
+
+      resetForm();
+      await fetchRecords();
+      switchTab('view-records');
+      saveBtn.disabled = false;
+      saveBtn.innerText = "💾 Save Record & Send SMS";
     });
 
     document.getElementById('refreshBtn').addEventListener('click', fetchRecords);
-    
     window.onload = fetchRecords;
   </script>
 </body>
