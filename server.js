@@ -81,7 +81,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.static(__dirname, { 
   maxAge: '24h',
   etag: false,
-  index: false
+  index: true
 }));
 
 // ================== MONGODB CONNECTION WITH MIDDLEWARE LAZY LOAD FOR VERCEL ==================
@@ -299,6 +299,31 @@ const isAdmin = (user) => user && adminEmails.includes(user.email);
 // ================== HEALTH CHECK ==================
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// ================== SERVE HTML PAGES ==================
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+app.get('/login', (req, res) => {
+  res.sendFile(path.join(__dirname, 'login.html'));
+});
+
+app.get('/signup', (req, res) => {
+  res.sendFile(path.join(__dirname, 'signup.html'));
+});
+
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, 'admin.html'));
+});
+
+app.get('/records', (req, res) => {
+  res.sendFile(path.join(__dirname, 'records.html'));
+});
+
+app.get('/main', (req, res) => {
+  res.sendFile(path.join(__dirname, 'main.html'));
 });
 
 app.get('/api/me', (req, res) => {
