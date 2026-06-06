@@ -181,7 +181,6 @@
     const API_URL = '/api/records';
     let isOffline = false;
 
-    // Kazi ya kubadilisha muonekano wa Mtandao (Online/Offline)
     function updateStatusIndicator(offline) {
       isOffline = offline;
       const statusSpan = document.getElementById('connectionStatus');
@@ -263,7 +262,9 @@
 
       if(name && (prev > 0 || curr > 0)) {
         const message = `Ndugu ${name},\n\nBili yako ya maji ya tarehe ${date}:\n\n` +
-                        `✓ Matumizi: ${usage.toFixed(1)} m³\n` +
+                        `✓ Usomaji wa Nyuma: ${prev.toFixed(1)} m³\n` +
+                        `✓ Usomaji wa Sasa: ${curr.toFixed(1)} m³\n` +
+                        `✓ Matumizi Halisi: ${usage.toFixed(1)} m³\n` +
                         `✓ Jumla ya Bili: TZS ${total.toLocaleString()}\n\n` +
                         `Asante kwa ushirikiano wako.\n` +
                         `Water Billing System`;
@@ -295,7 +296,9 @@
         }
 
         const message = `Ndugu ${name},\n\nBili yako ya maji ya tarehe ${date}:\n\n` +
-                        `✓ Matumizi: ${usage.toFixed(1)} m³\n` +
+                        `✓ Usomaji wa Nyuma: Number(prev).toFixed(1) m³\n` +
+                        `✓ Usomaji wa Sasa: Number(curr).toFixed(1) m³\n` +
+                        `✓ Matumizi Halisi: Number(usage).toFixed(1) m³\n` +
                         `✓ Jumla ya Bili: TZS ${total.toLocaleString()}\n\n` +
                         `Asante kwa ushirikiano wako.\n` +
                         `Water Billing System`;
@@ -306,7 +309,6 @@
       });
     }
 
-    // Kupata data (MongoDB au LocalStorage)
     async function fetchRecords() {
       const tbody = document.getElementById('recordsBody');
       let records = [];
@@ -315,10 +317,10 @@
         const response = await fetch(API_URL, { credentials: 'include' });
         if (!response.ok) throw new Error('Failed to fetch');
         records = await response.json();
-        updateStatusIndicator(false); // Tuko online
+        updateStatusIndicator(false);
       } catch (error) {
         console.warn('Server haipatikani, tunasoma kutoka LocalStorage...', error);
-        updateStatusIndicator(true); // Tuko offline
+        updateStatusIndicator(true);
         const localData = localStorage.getItem('water_records');
         records = localData ? JSON.parse(localData) : [];
       }
@@ -373,7 +375,6 @@
       setTimeout(() => msgDiv.style.display = 'none', 4000);
     }
 
-    // Kuhifadhi data (MongoDB au LocalStorage)
     document.getElementById('addRecordForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       const name = document.getElementById('customerName').value;
@@ -400,7 +401,6 @@
       saveBtn.innerText = "💾 Saving...";
 
       try {
-        // Jaribu kusave MongoDB (Server) kwanza
         const response = await fetch(API_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -415,7 +415,6 @@
           throw new Error('Server returned error response');
         }
       } catch (error) {
-        // Ikikataa, save kwenye LocalStorage
         console.error('Server failed, saving to LocalStorage...', error);
         updateStatusIndicator(true);
 
@@ -427,7 +426,6 @@
         showMessage(`⚠️ Server offline! Record saved locally for ${name}.`, 'warning');
       }
 
-      // Sehemu ya kutuma SMS baada ya kufanya maamuzi ya wapi pa kusave
       if (sendSms && phone && phone !== '-') {
         await sendSMS(name, phone, prev, curr, usage, total, today);
       }
