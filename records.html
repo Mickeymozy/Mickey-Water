@@ -83,7 +83,7 @@
     <div id="view-records" class="tab-content active">
       <div class="summary">
         <div class="metric"><span>Total Records</span><strong id="recordCount">0</strong></div>
-        <div class="metric"><span>Total Usage</span><strong id="totalUsage">0 m³</strong></div>
+        <div class="metric"><span>Total Usage</span><strong id="totalUsage">0 Units</strong></div>
         <div class="metric"><span>Total Amount</span><strong id="totalAmount">TZS 0</strong></div>
       </div>
       <div id="message" class="message">Loading records...</div>
@@ -94,9 +94,9 @@
               <th>Date</th>
               <th>Name</th>
               <th>Phone</th>
-              <th>Prev (m³)</th>
-              <th>Curr (m³)</th>
-              <th>Usage (m³)</th>
+              <th>Prev (Units)</th>
+              <th>Curr (Units)</th>
+              <th>Usage (Units)</th>
               <th>Total (TZS)</th>
               <th>SMS</th>
             </tr>
@@ -126,18 +126,18 @@
 
           <div class="form-row">
             <div class="form-group">
-              <label for="previousReading" class="required">Previous Reading (m³)</label>
+              <label for="previousReading" class="required">Previous Reading (Units)</label>
               <input type="number" id="previousReading" min="0" step="0.1" required placeholder="0">
             </div>
             <div class="form-group">
-              <label for="currentReading" class="required">Current Reading (m³)</label>
+              <label for="currentReading" class="required">Current Reading (Units)</label>
               <input type="number" id="currentReading" min="0" step="0.1" required placeholder="0">
             </div>
           </div>
 
           <div class="form-row">
             <div class="form-group">
-              <label for="ratePerUnit">Rate (TZS per m³)</label>
+              <label for="ratePerUnit">Rate (TZS per Unit)</label>
               <input type="number" id="ratePerUnit" min="0" step="1" value="2000">
             </div>
             <div class="form-group">
@@ -149,7 +149,7 @@
           <div class="calculation-display">
             <div class="calc-item">
               <div class="calc-label">Usage</div>
-              <div class="calc-value" id="calculatedUsage">0 m³</div>
+              <div class="calc-value" id="calculatedUsage">0 Units</div>
             </div>
             <div class="calc-item">
               <div class="calc-label">Total Amount</div>
@@ -215,7 +215,7 @@
 
     function resetForm() {
       document.getElementById('addRecordForm').reset();
-      document.getElementById('calculatedUsage').innerText = '0 m³';
+      document.getElementById('calculatedUsage').innerText = '0 Units';
       document.getElementById('calculatedTotal').innerText = 'TZS 0';
       document.getElementById('previousReading').value = '';
       document.getElementById('currentReading').value = '';
@@ -247,7 +247,7 @@
       let usage = curr - prev;
       if (usage < 0) usage = 0;
       const total = (usage * rate) + fixed;
-      document.getElementById('calculatedUsage').innerText = `${usage.toFixed(1)} m³`;
+      document.getElementById('calculatedUsage').innerText = `${usage.toFixed(1)} Units`;
       document.getElementById('calculatedTotal').innerText = `TZS ${total.toLocaleString()}`;
       return { usage, total };
     }
@@ -262,9 +262,9 @@
 
       if(name && (prev > 0 || curr > 0)) {
         const message = `Ndugu ${name},\n\nBili yako ya maji ya tarehe ${date}:\n\n` +
-                        `✓ Usomaji wa Nyuma: ${prev.toFixed(1)} m³\n` +
-                        `✓ Usomaji wa Sasa: ${curr.toFixed(1)} m³\n` +
-                        `✓ Matumizi Halisi: ${usage.toFixed(1)} m³\n` +
+                        `✓ Usomaji wa Nyuma: ${prev.toFixed(1)} Units\n` +
+                        `✓ Usomaji wa Sasa: ${curr.toFixed(1)} Units\n` +
+                        `✓ Matumizi Halisi: ${usage.toFixed(1)} Units\n` +
                         `✓ Jumla ya Bili: TZS ${total.toLocaleString()}\n\n` +
                         `Asante kwa ushirikiano wako.\n` +
                         `Water Billing System`;
@@ -295,10 +295,11 @@
           return;
         }
 
+        // Hapa namba sasa zitajiandika zenyewe vizuri bila kuandika maandishi ya code
         const message = `Ndugu ${name},\n\nBili yako ya maji ya tarehe ${date}:\n\n` +
-                        `✓ Usomaji wa Nyuma: Number(prev).toFixed(1) m³\n` +
-                        `✓ Usomaji wa Sasa: Number(curr).toFixed(1) m³\n` +
-                        `✓ Matumizi Halisi: Number(usage).toFixed(1) m³\n` +
+                        `✓ Usomaji wa Nyuma: ${parseFloat(prev).toFixed(1)} Units\n` +
+                        `✓ Usomaji wa Sasa: ${parseFloat(curr).toFixed(1)} Units\n` +
+                        `✓ Matumizi Halisi: ${parseFloat(usage).toFixed(1)} Units\n` +
                         `✓ Jumla ya Bili: TZS ${total.toLocaleString()}\n\n` +
                         `Asante kwa ushirikiano wako.\n` +
                         `Water Billing System`;
@@ -343,7 +344,7 @@
           <td>${rec.phone || '-'}</td>
           <td>${rec.prev}</td>
           <td>${rec.curr}</td>
-          <td>${rec.usage.toFixed(1)} m³</td>
+          <td>${rec.usage.toFixed(1)} Units</td>
           <td>TZS ${rec.total.toLocaleString()}</td>
           <td><button class="btn-sms" onclick="resendSMS('${rec.name}', '${rec.phone}', ${rec.prev}, ${rec.curr}, ${rec.usage}, ${rec.total}, '${rec.date}')">📱 Resend SMS</button></td>
         `;
@@ -363,7 +364,7 @@
 
     function updateSummary(count, usage, amount) {
       document.getElementById('recordCount').innerText = count;
-      document.getElementById('totalUsage').innerText = `${usage.toFixed(1)} m³`;
+      document.getElementById('totalUsage').innerText = `${usage.toFixed(1)} Units`;
       document.getElementById('totalAmount').innerText = `TZS ${amount.toLocaleString()}`;
     }
 
