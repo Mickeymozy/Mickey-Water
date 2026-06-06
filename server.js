@@ -14,24 +14,58 @@ const axios = require('axios');
 
 const app = express();
 
-// ================== PROXY TRUST (FIX KWA AJILI YA VERCEL/RENDER) ==================
-app.set('trust proxy', 1); 
+// ================== CONSTANTS & CONFIG ==================
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/water_billing';
+const PORT = process.env.PORT || 3000;
+const ENV = process.env.NODE_ENV || 'development';
 
-// ================== EMAIL CONFIGURATION ==================
-const emailTransporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: parseInt(process.env.SMTP_PORT) || 587,
-  secure: process.env.SMTP_SECURE === 'true',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASSWORD
+// ================== APP STATE ==================
+let mongoConnected = false;
+let sessionStoreType = 'memory';
+
+// ================== STARTUP LOG ==================
+const log = {
+  info: (msg) => console.log(`ℹ️  ${msg}`),
+  success: (msg) => console.log(`✅ ${msg}`),
+  warn: (msg) => console.warn(`⚠️  ${msg}`),
+  error: (msg) => console.error(`❌ ${msg}`)
+};
+
+log.info('Initializing Water Billing Server...'); 
+
+// ================== PROXY TRUST (FIX KWA AJILI YA VERCEL/RENDER) ==================
+try {
+  app.set('trust proxy', 1);
+  log.success('Proxy trust configured');
+} catch (err) {
+  log.warn('Proxy trust config failed: ' + err.message);
+}
+
+// ================== EMAIL CONFIGURATION (SAFE) ==================
+let emailTransporter = null;
+try {
+  if (process.env.SMTP_HOST && process.env.SMTP_PORT && process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) {
+    emailTransporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: parseInt(process.env.SMTP_PORT) || 587,
+      secure: process.env.SMTP_SECURE === 'true',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASSWORD
+      }
+    });
+    log.success('Email service configured');
+  } else {
+    log.warn('Email configuration incomplete - notifications disabled');
   }
-});
+} catch (err) {
+  log.warn('Email configuration error: ' + err.message);
+}
 
 const sendEmail = async (to, subject, html) => {
   try {
-    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
-      console.warn('⚠️  Email not configured. Set EMAIL_USER and EMAIL_PASSWORD in .env');
+    if (!emailTransporter) {
+      log.warn('Email service not available');
       return { success: false, error: 'Email service not configured' };
     }
 
@@ -41,85 +75,122 @@ const sendEmail = async (to, subject, html) => {
       subject: subject,
       html: html
     });
-    console.log('📧 Email sent to:', to, '| MessageID:', info.messageId);
+    log.success(`Email sent to: ${to}`);
     return { success: true, messageId: info.messageId };
   } catch (err) {
-    console.error('❌ Email send error:', err.message);
+    log.error('Email send failed: ' + err.message);
     return { success: false, error: err.message };
   }
 };
 
-// ================== SECURITY HEADERS ==================
-app.use((req, res, next) => {
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
-  res.setHeader('X-XSS-Protection', '1; mode=block');
-  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
-  next();
-});
-
-// ================== REQUEST LOGGING ==================
-app.use((req, res, next) => {
-  const start = Date.now();
-  res.on('finish', () => {
-    const duration = Date.now() - start;
-    const statusColor = res.statusCode < 400 ? '✅' : res.statusCode < 500 ? '⚠️ ' : '❌';
-    console.log(`${statusColor} ${req.method} ${req.path} - ${res.statusCode} (${duration}ms)`);
-  });
-  next();
-});
-
-// ================== PERFORMANCE OPTIMIZATIONS ==================
-app.use(compression({ threshold: 1024, level: 6 }));
-
-app.use((req, res, next) => {
-  if (req.path.match(/\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$/)) {
-    res.set('Cache-Control', 'public, max-age=86400');
-    res.set('ETag', 'disabled');
-  } else if (req.path.match(/\.(html)$/)) {
-    res.set('Cache-Control', 'public, max-age=3600');
-  } else {
-    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
-  }
-  next();
-});
-
-// ================== BASIC MIDDLEWARES ==================
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
-app.use(express.static(__dirname, { 
-  maxAge: '24h',
-  etag: false,
-  index: true
-}));
-
-// ================== MONGODB CONNECTION WITH MIDDLEWARE LAZY LOAD FOR VERCEL ==================
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/water_billing';
-const PORT = process.env.PORT || 3000;
-
-// Kuhakikisha muunganisho upo sawa kwenye Serverless Functions kabla ya kila ombi (Request)
-app.use(async (req, res, next) => {
-  if (mongoose.connection.readyState === 0) {
-    try {
-      await mongoose.connect(MONGODB_URI);
-      console.log("Mongo Connected ✅ (Serverless Lazy)");
-    } catch (err) {
-      console.error("Mongo Connection Error ❌", err);
-      return res.status(500).json({ error: "Database connection failed" });
-    }
-  }
-  next();
-});
-
-mongoose.set('strictQuery', true);
-
-// ================== SESSION STORE - MONGODB WITH FALLBACK FOR VERCEL ==================
-let sessionStore;
-
-// Try to use MongoDB store, but fallback to MemoryStore if it fails
+// ================== MIDDLEWARE: SECURITY HEADERS ==================
 try {
+  app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+    next();
+  });
+  log.success('Security headers enabled');
+} catch (err) {
+  log.warn('Security headers setup failed: ' + err.message);
+}
+
+// ================== MIDDLEWARE: REQUEST LOGGING ==================
+try {
+  app.use((req, res, next) => {
+    const start = Date.now();
+    res.on('finish', () => {
+      const duration = Date.now() - start;
+      const statusColor = res.statusCode < 400 ? '✅' : res.statusCode < 500 ? '⚠️' : '❌';
+      log.info(`${statusColor} ${req.method} ${req.path} - ${res.statusCode} (${duration}ms)`);
+    });
+    next();
+  });
+} catch (err) {
+  log.warn('Request logging setup failed: ' + err.message);
+}
+
+// ================== MIDDLEWARE: COMPRESSION ==================
+try {
+  app.use(compression({ threshold: 1024, level: 6 }));
+  log.success('Compression enabled');
+} catch (err) {
+  log.warn('Compression setup failed: ' + err.message);
+}
+
+// ================== MIDDLEWARE: CACHE CONTROL ==================
+try {
+  app.use((req, res, next) => {
+    if (req.path.match(/\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$/)) {
+      res.set('Cache-Control', 'public, max-age=86400');
+      res.set('ETag', 'disabled');
+    } else if (req.path.match(/\.(html)$/)) {
+      res.set('Cache-Control', 'public, max-age=3600');
+    } else {
+      res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    }
+    next();
+  });
+} catch (err) {
+  log.warn('Cache control setup failed: ' + err.message);
+}
+
+// ================== MIDDLEWARE: BODY PARSER ==================
+try {
+  app.use(express.json({ limit: '10mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+  log.success('Body parser configured');
+} catch (err) {
+  log.error('Body parser setup failed: ' + err.message);
+}
+
+// ================== MIDDLEWARE: STATIC FILES ==================
+try {
+  app.use(express.static(__dirname, { 
+    maxAge: '24h',
+    etag: false,
+    index: true
+  }));
+  log.success('Static file serving enabled');
+} catch (err) {
+  log.warn('Static file setup failed: ' + err.message);
+}
+
+// ================== MIDDLEWARE: DATABASE CONNECTION (LAZY) ==================
+app.use(async (req, res, next) => {
+  try {
+    if (mongoose.connection.readyState === 0) {
+      await mongoose.connect(MONGODB_URI, {
+        serverSelectionTimeoutMS: 5000,
+        connectTimeoutMS: 10000
+      });
+      mongoConnected = true;
+      log.success('MongoDB connected');
+    }
+    next();
+  } catch (err) {
+    mongoConnected = false;
+    log.warn('MongoDB connection failed: ' + err.message);
+    // Don't block - continue anyway
+    next();
+  }
+});
+
+try {
+  mongoose.set('strictQuery', true);
+} catch (err) {
+  log.warn('Mongoose config failed: ' + err.message);
+}
+
+// ================== MIDDLEWARE: SESSION STORE (SAFE INITIALIZATION) ==================
+let sessionStore = null;
+let sessionStoreError = null;
+
+try {
+  // Try MongoDB store
   sessionStore = MongoStore.create({
     mongoUrl: MONGODB_URI,
     collectionName: 'sessions',
@@ -127,174 +198,220 @@ try {
     autoRemove: 'interval',
     autoRemoveInterval: 10
   });
-  console.log('✅ Session store using MongoDB');
+  sessionStoreType = 'mongodb';
+  log.success('Session store: MongoDB');
 } catch (err) {
-  console.warn('⚠️  MongoDB session store initialization failed, using memory store:', err.message);
-  // Fallback: use MemoryStore (not production-ideal but prevents crashes)
-  const session_pkg = require('express-session');
-  sessionStore = new session_pkg.MemoryStore();
+  sessionStoreError = err.message;
+  log.warn('MongoDB session store unavailable: ' + err.message);
+  // Fallback to memory store
+  try {
+    const session_pkg = require('express-session');
+    sessionStore = new session_pkg.MemoryStore();
+    sessionStoreType = 'memory';
+    log.warn('Session store: Memory (data will be lost on restart)');
+  } catch (fallbackErr) {
+    log.error('Session store initialization failed: ' + fallbackErr.message);
+  }
 }
 
-// ================== SESSION CONFIGURATION ==================
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'secret123',
-  resave: false, 
-  saveUninitialized: false, 
-  store: sessionStore,
-  cookie: { 
-    secure: true, // Vercel zote zina HTTPS kwa default
-    httpOnly: true,
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-    sameSite: 'lax'
-  },
-  name: 'waterBillingSid'
-}));
+// ================== MIDDLEWARE: SESSION ==================
+if (sessionStore) {
+  try {
+    app.use(session({
+      secret: process.env.SESSION_SECRET || 'default-secret-change-me',
+      resave: false, 
+      saveUninitialized: false, 
+      store: sessionStore,
+      cookie: { 
+        secure: true,
+        httpOnly: true,
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+        sameSite: 'lax'
+      },
+      name: 'waterBillingSid'
+    }));
+    log.success('Session middleware enabled');
+  } catch (err) {
+    log.error('Session middleware failed: ' + err.message);
+  }
+}
 
-app.use(passport.initialize());
-app.use(passport.session());
+// ================== MIDDLEWARE: PASSPORT ==================
+try {
+  app.use(passport.initialize());
+  app.use(passport.session());
+  log.success('Passport authentication configured');
+} catch (err) {
+  log.error('Passport setup failed: ' + err.message);
+}
 
 // ================== MODELS WITH INDEXES ==================
-const userSchema = new mongoose.Schema({
-  id: { type: String, index: true },
-  name: String,
-  email: { type: String, index: true, unique: true, sparse: true },
-  passwordHash: String,
-  provider: String,
-  googleId: String,
-  picture: String,
-  resetToken: { type: String, index: true, sparse: true },
-  resetExpiry: { type: Date, index: true, sparse: true },
-  lastLogin: { type: Date, default: null },
-  tempPassword: { type: String, sparse: true },
-  passwordChangeRequired: { type: Boolean, default: false },
-  createdAt: { type: Date, default: Date.now, index: true }
-});
+let User, Record, PasswordResetRequest, StreamAnalytics;
 
-const recordSchema = new mongoose.Schema({
-  userId: { type: String, index: true }, 
-  date: String, 
-  name: String,
-  phone: { type: String, index: true }, 
-  prev: Number,
-  curr: Number,
-  usage: Number,
-  total: Number,
-  createdAt: { type: Date, default: Date.now, index: true }
-});
+try {
+  const userSchema = new mongoose.Schema({
+    id: { type: String, index: true },
+    name: String,
+    email: { type: String, index: true, unique: true, sparse: true },
+    passwordHash: String,
+    provider: String,
+    googleId: String,
+    picture: String,
+    resetToken: { type: String, index: true, sparse: true },
+    resetExpiry: { type: Date, index: true, sparse: true },
+    lastLogin: { type: Date, default: null },
+    tempPassword: { type: String, sparse: true },
+    passwordChangeRequired: { type: Boolean, default: false },
+    createdAt: { type: Date, default: Date.now, index: true }
+  });
 
-recordSchema.index({ userId: 1, createdAt: -1 });
-recordSchema.index({ phone: 1, createdAt: -1 });
+  const recordSchema = new mongoose.Schema({
+    userId: { type: String, index: true }, 
+    date: String, 
+    name: String,
+    phone: { type: String, index: true }, 
+    prev: Number,
+    curr: Number,
+    usage: Number,
+    total: Number,
+    createdAt: { type: Date, default: Date.now, index: true }
+  });
 
-const passwordResetSchema = new mongoose.Schema({
-  email: { type: String, required: true, index: true },
-  userName: String,
-  resetToken: { type: String, unique: true, sparse: true },
-  newPassword: { type: String, sparse: true },
-  createdAt: { type: Date, default: Date.now, index: true },
-  expiresAt: { type: Date, index: true },
-  status: { type: String, enum: ['pending', 'approved', 'completed', 'expired'], default: 'pending' },
-  emailSent: { type: Boolean, default: false },
-  approvedBy: String,
-  approvedAt: Date
-});
+  recordSchema.index({ userId: 1, createdAt: -1 });
+  recordSchema.index({ phone: 1, createdAt: -1 });
 
-const streamAnalyticsSchema = new mongoose.Schema({
-  sessionId: { type: String, required: true, index: true },
-  userId: { type: String, sparse: true, index: true },
-  userEmail: { type: String, sparse: true, index: true },
-  timestamp: { type: Date, default: Date.now, index: true },
-  event: { type: String, required: true, index: true },
-  channel: { type: String, index: true },
-  category: String,
-  severity: { type: String, enum: ['info', 'warning', 'error', 'critical'], default: 'info' },
-  data: mongoose.Schema.Types.Mixed,
-  userAgent: String,
-  createdAt: { type: Date, default: Date.now, index: true, expires: 2592000 }
-});
+  const passwordResetSchema = new mongoose.Schema({
+    email: { type: String, required: true, index: true },
+    userName: String,
+    resetToken: { type: String, unique: true, sparse: true },
+    newPassword: { type: String, sparse: true },
+    createdAt: { type: Date, default: Date.now, index: true },
+    expiresAt: { type: Date, index: true },
+    status: { type: String, enum: ['pending', 'approved', 'completed', 'expired'], default: 'pending' },
+    emailSent: { type: Boolean, default: false },
+    approvedBy: String,
+    approvedAt: Date
+  });
 
-const User = mongoose.models.User || mongoose.model('User', userSchema);
-const Record = mongoose.models.Record || mongoose.model('Record', recordSchema);
-const PasswordResetRequest = mongoose.models.PasswordResetRequest || mongoose.model('PasswordResetRequest', passwordResetSchema);
-const StreamAnalytics = mongoose.models.StreamAnalytics || mongoose.model('StreamAnalytics', streamAnalyticsSchema);
+  const streamAnalyticsSchema = new mongoose.Schema({
+    sessionId: { type: String, required: true, index: true },
+    userId: { type: String, sparse: true, index: true },
+    userEmail: { type: String, sparse: true, index: true },
+    timestamp: { type: Date, default: Date.now, index: true },
+    event: { type: String, required: true, index: true },
+    channel: { type: String, index: true },
+    category: String,
+    severity: { type: String, enum: ['info', 'warning', 'error', 'critical'], default: 'info' },
+    data: mongoose.Schema.Types.Mixed,
+    userAgent: String,
+    createdAt: { type: Date, default: Date.now, index: true, expires: 2592000 }
+  });
+
+  User = mongoose.models.User || mongoose.model('User', userSchema);
+  Record = mongoose.models.Record || mongoose.model('Record', recordSchema);
+  PasswordResetRequest = mongoose.models.PasswordResetRequest || mongoose.model('PasswordResetRequest', passwordResetSchema);
+  StreamAnalytics = mongoose.models.StreamAnalytics || mongoose.model('StreamAnalytics', streamAnalyticsSchema);
+  
+  log.success('Database models initialized');
+} catch (err) {
+  log.error('Model initialization failed: ' + err.message);
+}
 
 // ================== PASSPORT STRATEGIES ==================
-passport.use('local', new LocalStrategy({
-  usernameField: 'email',
-  passwordField: 'password'
-}, async (email, password, done) => {
-  try {
-    const user = await User.findOne({ email: email.toLowerCase() });
-    if (!user) return done(null, false, { message: 'User not found' });
+try {
+  passport.use('local', new LocalStrategy({
+    usernameField: 'email',
+    passwordField: 'password'
+  }, async (email, password, done) => {
+    try {
+      if (!User) return done(new Error('User model not loaded'));
+      const user = await User.findOne({ email: email.toLowerCase() });
+      if (!user) return done(null, false, { message: 'User not found' });
 
-    const isMatch = await bcrypt.compare(password, user.passwordHash);
-    if (!isMatch) return done(null, false, { message: 'Invalid password' });
+      const isMatch = await bcrypt.compare(password, user.passwordHash);
+      if (!isMatch) return done(null, false, { message: 'Invalid password' });
 
-    return done(null, user);
-  } catch (err) {
-    return done(err);
-  }
-}));
+      return done(null, user);
+    } catch (err) {
+      return done(err);
+    }
+  }));
+  log.success('Local authentication strategy configured');
+} catch (err) {
+  log.warn('Local strategy setup failed: ' + err.message);
+}
 
-passport.use('google', new GoogleStrategy({
-  clientID: process.env.GOOGLE_CLIENT_ID || 'not-configured',
-  clientSecret: process.env.GOOGLE_CLIENT_SECRET || 'not-configured',
-  callbackURL: process.env.GOOGLE_CALLBACK_URL || 'https://mickey-glitch.onrender.com/auth/google/callback',
-  proxy: true 
-}, async (accessToken, refreshToken, profile, done) => {
-  try {
-    if (!profile.id) return done(new Error('Invalid Google profile'));
+try {
+  passport.use('google', new GoogleStrategy({
+    clientID: process.env.GOOGLE_CLIENT_ID || 'not-configured',
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET || 'not-configured',
+    callbackURL: process.env.GOOGLE_CALLBACK_URL || 'https://mickey-glitch.onrender.com/auth/google/callback',
+    proxy: true 
+  }, async (accessToken, refreshToken, profile, done) => {
+    try {
+      if (!User) return done(new Error('User model not loaded'));
+      if (!profile.id) return done(new Error('Invalid Google profile'));
 
-    const email = profile.emails?.[0]?.value;
-    if (!email) return done(new Error('Email required from Google profile'));
+      const email = profile.emails?.[0]?.value;
+      if (!email) return done(new Error('Email required from Google profile'));
 
-    let user = await User.findOne({ googleId: profile.id });
+      let user = await User.findOne({ googleId: profile.id });
 
-    if (!user) {
-      const existingByEmail = await User.findOne({ email: email.toLowerCase() });
-      if (existingByEmail) {
-        existingByEmail.googleId = profile.id;
-        existingByEmail.picture = profile.photos?.[0]?.value || existingByEmail.picture;
-        existingByEmail.lastLogin = new Date();
-        await existingByEmail.save();
-        return done(null, existingByEmail);
+      if (!user) {
+        const existingByEmail = await User.findOne({ email: email.toLowerCase() });
+        if (existingByEmail) {
+          existingByEmail.googleId = profile.id;
+          existingByEmail.picture = profile.photos?.[0]?.value || existingByEmail.picture;
+          existingByEmail.lastLogin = new Date();
+          await existingByEmail.save();
+          return done(null, existingByEmail);
+        }
+
+        user = new User({
+          id: profile.id,
+          googleId: profile.id,
+          name: profile.displayName || 'User',
+          email: email.toLowerCase(),
+          picture: profile.photos?.[0]?.value,
+          provider: 'google',
+          lastLogin: new Date()
+        });
+        await user.save();
+      } else {
+        user.lastLogin = new Date();
+        user.picture = profile.photos?.[0]?.value || user.picture;
+        await user.save();
       }
 
-      user = new User({
-        id: profile.id,
-        googleId: profile.id,
-        name: profile.displayName || 'User',
-        email: email.toLowerCase(),
-        picture: profile.photos?.[0]?.value,
-        provider: 'google',
-        lastLogin: new Date()
-      });
-      await user.save();
-    } else {
-      user.lastLogin = new Date();
-      user.picture = profile.photos?.[0]?.value || user.picture;
-      await user.save();
+      return done(null, user);
+    } catch (err) {
+      return done(err);
     }
+  }));
+  log.success('Google authentication strategy configured');
+} catch (err) {
+  log.warn('Google strategy setup failed: ' + err.message);
+}
 
-    return done(null, user);
-  } catch (err) {
-    return done(err);
-  }
-}));
+try {
+  passport.serializeUser((user, done) => {
+    done(null, user._id.toString());
+  });
 
-passport.serializeUser((user, done) => {
-  done(null, user._id.toString());
-});
-
-passport.deserializeUser(async (id, done) => {
-  try {
-    if (!id) return done(null, false);
-    const user = await User.findById(id).lean();
-    if (!user) return done(null, false);
-    done(null, user);
-  } catch (err) {
-    done(err);
-  }
-});
+  passport.deserializeUser(async (id, done) => {
+    try {
+      if (!id || !User) return done(null, false);
+      const user = await User.findById(id).lean();
+      if (!user) return done(null, false);
+      done(null, user);
+    } catch (err) {
+      done(err);
+    }
+  });
+  log.success('Passport serialization configured');
+} catch (err) {
+  log.warn('Passport serialization setup failed: ' + err.message);
+}
 
 // ================== AUTH MIDDLEWARE ==================
 const protect = (req, res, next) => {
@@ -306,11 +423,6 @@ const protect = (req, res, next) => {
 
 const adminEmails = ['mickidadyhamza@gmail.com'];
 const isAdmin = (user) => user && adminEmails.includes(user.email);
-
-// ================== HEALTH CHECK ==================
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
 
 // ================== SERVE HTML PAGES ==================
 app.get('/', (req, res, next) => {
@@ -686,42 +798,113 @@ app.get('/logout', (req, res) => {
 
 // ================== 404 HANDLER ==================
 app.use((req, res) => {
-  console.warn(`404 - Not Found: ${req.method} ${req.path}`);
-  res.status(404).json({ error: 'Route not found', path: req.path });
+  res.status(404).json({ 
+    error: 'Route not found', 
+    path: req.path,
+    method: req.method 
+  });
 });
 
 // ================== GLOBAL ERROR HANDLER ==================
 app.use((err, req, res, next) => {
-  console.error('❌ Unhandled error:', err.message || err);
-  console.error('Stack:', err.stack);
+  log.error('Request error: ' + (err.message || JSON.stringify(err)));
   
-  res.status(500).json({ 
+  if (err.stack) {
+    log.error('Stack trace: ' + err.stack.split('\n').slice(0, 3).join(' | '));
+  }
+  
+  // Prevent multiple response sends
+  if (res.headersSent) {
+    return next(err);
+  }
+
+  res.status(err.status || 500).json({ 
     error: 'Internal server error',
-    message: process.env.NODE_ENV === 'development' ? err.message : undefined,
+    message: ENV === 'development' ? err.message : undefined,
     path: req.path
   });
 });
 
-// ================== LOCAL START + VERCEL SERVERLESS EXPORT ==================
-const startupLog = () => {
-  console.log('\n');
-  console.log('╔════════════════════════════════════════╗');
-  console.log('║  Water Billing System - Server Ready   ║');
-  console.log('╚════════════════════════════════════════╝');
-  console.log(`\n📍 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🌐 URL: http://localhost:${PORT}`);
-  console.log(`🗄️  Database: ${MONGODB_URI.includes('127.0.0.1') ? 'Local MongoDB' : 'MongoDB Atlas'}`);
-  console.log(`✅ Session Store: ${sessionStore.constructor.name}`);
-  console.log('\n');
+// ================== UNCAUGHT EXCEPTION HANDLER ==================
+process.on('uncaughtException', (err) => {
+  log.error('Uncaught exception: ' + err.message);
+  if (err.stack) {
+    log.error('Stack: ' + err.stack.split('\n').slice(0, 5).join(' | '));
+  }
+  // Continue running - don't crash
+});
+
+// ================== UNHANDLED REJECTION HANDLER ==================
+process.on('unhandledRejection', (reason, promise) => {
+  log.error('Unhandled rejection: ' + (reason?.message || reason));
+  // Continue running
+});
+
+// ================== STARTUP & EXPORT ==================
+const startupInfo = {
+  environment: ENV,
+  port: PORT,
+  mongodb: mongoConnected ? 'Connected' : 'Pending',
+  sessionStore: sessionStoreType,
+  email: emailTransporter ? 'Configured' : 'Disabled',
+  timestamp: new Date().toISOString()
+};
+
+const displayStartupInfo = () => {
+  console.log('\n╔════════════════════════════════════════════╗');
+  console.log('║   🌊 WATER BILLING SYSTEM - ACTIVE 🌊    ║');
+  console.log('╚════════════════════════════════════════════╝\n');
+  console.log('📊 Configuration:');
+  console.log(`   • Environment: ${startupInfo.environment}`);
+  console.log(`   • Port: ${startupInfo.port}`);
+  console.log(`   • Database: ${startupInfo.mongodb}`);
+  console.log(`   • Session Store: ${startupInfo.sessionStore}`);
+  console.log(`   • Email: ${startupInfo.email}`);
+  console.log(`   • Started: ${startupInfo.timestamp}`);
+  console.log('\n✅ Server ready to accept requests\n');
 };
 
 if (require.main === module) {
-  app.listen(PORT, () => {
-    startupLog();
-  });
+  try {
+    const server = app.listen(PORT, () => {
+      displayStartupInfo();
+    });
+
+    // Graceful shutdown
+    const gracefulShutdown = (signal) => {
+      log.warn(`${signal} received, shutting down gracefully...`);
+      server.close(() => {
+        log.info('Server closed');
+        if (mongoose.connection.close) {
+          mongoose.connection.close().then(() => {
+            log.info('Database connection closed');
+            process.exit(0);
+          }).catch(() => process.exit(0));
+        } else {
+          process.exit(0);
+        }
+      });
+    };
+
+    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+  } catch (err) {
+    log.error('Failed to start server: ' + err.message);
+    process.exit(1);
+  }
 } else {
-  // Vercel startup
-  console.log('🚀 Vercel Serverless Function initialized');
+  log.info('Running as Vercel serverless function');
 }
+
+// ================== HEALTH CHECK ENDPOINT ==================
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    mongodb: mongoConnected ? 'connected' : 'pending',
+    sessionStore: sessionStoreType
+  });
+});
 
 module.exports = app;
