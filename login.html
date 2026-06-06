@@ -127,55 +127,6 @@
             font-size: 0.9em;
         }
 
-        .input-group {
-            margin-bottom: 20px;
-        }
-
-        .input-group label {
-            display: block;
-            margin-bottom: 8px;
-            color: #333;
-            font-weight: 500;
-        }
-
-        .input-group input {
-            width: 100%;
-            padding: 12px 15px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            font-size: 1em;
-            transition: all 0.3s ease;
-        }
-
-        .input-group input:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-
-        .login-btn {
-            width: 100%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            padding: 14px;
-            border-radius: 8px;
-            font-size: 1em;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin-top: 20px;
-        }
-
-        .login-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-        }
-
-        .login-btn:active {
-            transform: translateY(0);
-        }
-
         .message {
             margin-top: 20px;
             padding: 12px;
@@ -223,11 +174,6 @@
             font-size: 0.85em;
         }
 
-        .info-text a {
-            color: #667eea;
-            text-decoration: none;
-        }
-
         @media (max-width: 480px) {
             .container {
                 margin: 20px;
@@ -251,7 +197,6 @@
         </div>
         
         <div class="content">
-            <!-- Admin Bypass Button -->
             <div class="admin-bypass">
                 <button class="admin-btn" onclick="adminLogin()">
                     <span class="btn-icon">👨‍💼</span>
@@ -261,79 +206,45 @@
             </div>
             
             <div class="divider">
-                <span>OR</span>
+                <span>System Info</span>
             </div>
-            
-            <!-- Regular Login Form (Disabled/Visual Only) -->
-            <div style="opacity: 0.5; pointer-events: none;">
-                <div class="input-group">
-                    <label>Email Address</label>
-                    <input type="email" placeholder="Enter your email" value="admin@waterbilling.com">
-                </div>
-                
-                <div class="input-group">
-                    <label>Password</label>
-                    <input type="password" placeholder="Enter your password" value="admin123">
-                </div>
-                
-                <button class="login-btn" disabled>
-                    Login with Credentials
-                </button>
-            </div>
-            
-            <div id="message" class="message"></div>
             
             <div class="info-text">
                 <p>💡 <strong>Quick Access:</strong> Click the <strong>Admin Login</strong> button above to access the system instantly.</p>
-                <p style="margin-top: 10px;">No registration or credentials needed for demo access.</p>
+                <p style="margin-top: 10px;">📱 Features: Save records & auto-send SMS to customers</p>
+                <p style="margin-top: 10px;">🔧 Server: Node.js + Express (Port 3000)</p>
             </div>
+            
+            <div id="message" class="message"></div>
         </div>
     </div>
 
     <script>
+        // Use relative URLs - no need to specify port since same origin
         async function adminLogin() {
             const messageDiv = document.getElementById('message');
             const adminBtn = document.querySelector('.admin-btn');
             
-            // Show loading state
             const originalText = adminBtn.innerHTML;
             adminBtn.innerHTML = '<span class="loading"></span> Logging in...';
             adminBtn.disabled = true;
             
             try {
-                // Try both endpoints for compatibility
-                let response = await fetch('/api/admin-login', {
+                const response = await fetch('/api/admin-login', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    credentials: 'include' // Important for session
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include'
                 });
-                
-                // If admin-login endpoint doesn't exist, try regular login
-                if (!response.ok) {
-                    response = await fetch('/api/login', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            email: 'admin@waterbilling.com',
-                            password: 'admin123'
-                        }),
-                        credentials: 'include'
-                    });
-                }
                 
                 const data = await response.json();
                 
                 if (data.success) {
                     messageDiv.className = 'message success';
-                    messageDiv.textContent = '✅ Login successful! Redirecting...';
+                    messageDiv.textContent = '✅ Login successful! Redirecting to dashboard...';
+                    messageDiv.style.display = 'block';
                     
-                    // Redirect to main page after short delay
                     setTimeout(() => {
-                        window.location.href = '/main';
+                        window.location.href = '/records';
                     }, 1000);
                 } else {
                     throw new Error(data.error || 'Login failed');
@@ -341,42 +252,33 @@
             } catch (error) {
                 console.error('Login error:', error);
                 messageDiv.className = 'message error';
-                messageDiv.textContent = '❌ Network error. Please make sure the server is running.';
+                messageDiv.textContent = '❌ Cannot connect to server. Make sure server is running on port 3000';
+                messageDiv.style.display = 'block';
                 
-                // Reset button
                 adminBtn.innerHTML = originalText;
                 adminBtn.disabled = false;
                 
-                // Try alternative approach - direct redirect
+                // Show help message
                 setTimeout(() => {
-                    if (confirm('Server connection issue. Try direct access?')) {
-                        window.location.href = '/main';
-                    }
-                }, 2000);
+                    messageDiv.innerHTML = '❌ Cannot connect to server.<br><br>💡 Troubleshooting:<br>1. Run: node server.js<br>2. Check if port 3000 is free<br>3. Check firewall settings';
+                }, 3000);
             }
         }
         
-        // Auto-check if already logged in
         async function checkSession() {
             try {
-                const response = await fetch('/api/me', {
-                    credentials: 'include'
-                });
+                const response = await fetch('/api/me', { credentials: 'include' });
                 const data = await response.json();
-                
                 if (data.authenticated) {
-                    // Already logged in, redirect to main
-                    window.location.href = '/main';
+                    window.location.href = '/records';
                 }
             } catch (error) {
                 console.log('Not logged in');
             }
         }
         
-        // Check session on page load
         checkSession();
         
-        // Add keyboard shortcut (Ctrl+Shift+A for admin login)
         document.addEventListener('keydown', (e) => {
             if (e.ctrlKey && e.shiftKey && e.key === 'A') {
                 e.preventDefault();
