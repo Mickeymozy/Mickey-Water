@@ -6,7 +6,7 @@ const compression = require('compression');
 const crypto = require('crypto');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3000; // Badilisha port to 3000
 const ENV = process.env.NODE_ENV || 'development';
 
 const log = {
@@ -209,6 +209,23 @@ app.post('/api/records', requireAdmin, (req, res) => {
   }
 });
 
+app.delete('/api/records/:id', requireAdmin, (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const index = billingRecords.findIndex(r => r.id === id);
+    
+    if (index === -1) {
+      return res.status(404).json({ error: 'Record not found' });
+    }
+    
+    billingRecords.splice(index, 1);
+    log.info(`Record deleted: ID ${id}`);
+    res.json({ success: true, message: 'Record deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete record' });
+  }
+});
+
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'ok',
@@ -263,7 +280,8 @@ const server = app.listen(PORT, () => {
   console.log('╚════════════════════════════════════════════╝\n');
   console.log(`   • Port: ${PORT}`);
   console.log(`   • Records: ${billingRecords.length}`);
-  console.log(`🌐 http://localhost:${PORT}\n`);
+  console.log(`   • URL: http://localhost:${PORT}\n`);
+  console.log('🔐 Click "Admin Login" button to access the system\n');
 });
 
 module.exports = app;
