@@ -101,7 +101,7 @@ app.post('/api/login', async (req, res) => {
     }
 
     if (!isMongoDBConnected) return res.status(500).json({ error: 'Database is offline. Cannot authenticate.' });
-    
+
     const user = await User.findOne({ email, password });
     if (!user) return res.status(400).json({ error: 'Invalid email or password' });
 
@@ -127,51 +127,8 @@ app.post('/api/logout', (req, res) => {
   req.session.destroy(() => res.json({ success: true }));
 });
 
-// 3. Records API (Online First)
-app.get('/api/records', requireAuth, async (req, res) => {
-  try {
-    if (isMongoDBConnected) {
-      const data = await Record.find().sort({ createdAt: -1 });
-      return res.json(data);
-    }
-    res.status(503).json({ error: 'MongoDB database is offline' });
-  } catch (err) {
-    res.status(500).json({ error: 'Server record fetch error' });
-  }
-});
-
-app.post('/api/records', requireAuth, async (req, res) => {
-  try {
-    const { date, name, phone, prev, curr } = req.body;
-    const usage = Number(curr) - Number(prev);
-    const total = usage * 2000;
-
-    if (isMongoDBConnected) {
-      const newRec = new Record({ date, name, phone, prev, curr, usage, total });
-      await newRec.save();
-      return res.status(201).json(newRec);
-    }
-    res.status(503).json({ error: 'Database offline. Saving blocked.' });
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to create record' });
-  }
-});
-
-app.delete('/api/records/:id', requireAuth, async (req, res) => {
-  try {
-    if (isMongoDBConnected) {
-      await Record.findByIdAndDelete(req.params.id);
-      return res.json({ success: true });
-    }
-    res.status(503).json({ error: 'Database offline' });
-  } catch (err) {
-    res.status(500).json({ error: 'Delete failed' });
-  }
-});
-
 // --- HTML PAGE RENDERING ROUTES ---
 
-// Mtu akifungua link tu, itampeleka login.html moja kwa moja
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'login.html'));
 });
@@ -188,11 +145,7 @@ app.get('/records', requireAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'records.html'));
 });
 
-app.get('/admin', requireAuth, (req, res) => {
-  res.sendFile(path.join(__dirname, 'admin.html'));
-});
-
-// 404 Error Handler kwa page zisizopo
+// 404 Error Handler
 app.use((req, res) => {
   res.status(404).json({ error: 'Endpoint or Page not found' });
 });
