@@ -47,8 +47,8 @@
         .btn-bypass { background: transparent; border: 1px dashed #38bdf8; color: #38bdf8; margin-top: 15px; }
         .divider { text-align: center; margin: 15px 0; color: #475569; font-size: 0.85em; }
         .message { padding: 10px; border-radius: 8px; margin-bottom: 15px; display: none; font-size: 0.9em; text-align: center; }
-        .error { background: rgba(239, 68, 68, 0.2); color: #fca5a5; border: 1px solid #ef4444; display: block; }
-        .success { background: rgba(34, 197, 94, 0.2); color: #86efac; border: 1px solid #22c55e; display: block; }
+        .error { background: rgba(239, 68, 68, 0.2); color: #fca5a5; border: 1px solid #ef4444; }
+        .success { background: rgba(34, 197, 94, 0.2); color: #86efac; border: 1px solid #22c55e; }
         .footer-link { text-align: center; margin-top: 20px; font-size: 0.9em; color: #94a3b8; }
         .footer-link a { color: #38bdf8; text-decoration: none; font-weight: bold; }
     </style>
@@ -61,7 +61,7 @@
         </div>
         <div class="content">
             <div id="msg" class="message"></div>
-            
+
             <form id="loginForm">
                 <div class="form-group">
                     <label>Email Address</label>
@@ -100,16 +100,21 @@
                     })
                 });
                 const data = await response.json();
+                
+                msg.style.display = 'block'; // Onyesha div ya message
 
                 if (data.success) {
                     msg.className = 'message success';
                     msg.textContent = 'Success! Redirecting...';
-                    window.location.href = data.redirect;
+                    setTimeout(() => {
+                        window.location.href = data.redirect;
+                    }, 1000);
                 } else {
                     msg.className = 'message error';
                     msg.textContent = data.error || 'Authentication failed';
                 }
             } catch (err) {
+                msg.style.display = 'block';
                 msg.className = 'message error';
                 msg.textContent = 'Server communication error';
             }
