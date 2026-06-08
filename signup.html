@@ -45,8 +45,8 @@
             background: #22c55e; color: white;
         }
         .message { padding: 10px; border-radius: 8px; margin-bottom: 15px; display: none; font-size: 0.9em; text-align: center; }
-        .error { background: rgba(239, 68, 68, 0.2); color: #fca5a5; border: 1px solid #ef4444; display: block; }
-        .success { background: rgba(34, 197, 94, 0.2); color: #86efac; border: 1px solid #22c55e; display: block; }
+        .error { background: rgba(239, 68, 68, 0.2); color: #fca5a5; border: 1px solid #ef4444; }
+        .success { background: rgba(34, 197, 94, 0.2); color: #86efac; border: 1px solid #22c55e; }
         .footer-link { text-align: center; margin-top: 20px; font-size: 0.9em; color: #94a3b8; }
         .footer-link a { color: #38bdf8; text-decoration: none; font-weight: bold; }
     </style>
@@ -59,7 +59,7 @@
         </div>
         <div class="content">
             <div id="msg" class="message"></div>
-            
+
             <form id="signupForm">
                 <div class="form-group">
                     <label>Full Name</label>
@@ -100,8 +100,10 @@
                     })
                 });
                 const data = await response.json();
+                
+                msg.style.display = 'block'; // Onyesha div ya message
 
-                if (data.success) {
+                if (data.success || response.status === 201) {
                     msg.className = 'message success';
                     msg.textContent = 'Account created successfully! Redirecting to login...';
                     setTimeout(() => window.location.href = '/login', 2000);
@@ -110,6 +112,7 @@
                     msg.textContent = data.error || 'Registration failed';
                 }
             } catch (err) {
+                msg.style.display = 'block';
                 msg.className = 'message error';
                 msg.textContent = 'Network or server error';
             }
