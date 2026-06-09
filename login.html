@@ -405,7 +405,7 @@
 
       <a class="link" href="signup.html">Create an account</a>
       <a class="link" onclick="openForgotPasswordModal()" style="cursor: pointer;">Forgot password?</a>
-      <a class="link" href="index.html" style="color:var(--muted);">Return to home</a>
+      <a class="link" href="index.html" style="color:var(--muted);font-weight:400">Return to home</a>
     </div>
   </div>
 
@@ -430,7 +430,6 @@
 
   <script>
     function openForgotPasswordModal() {
-      // Inabadilisha display kutoka none kwenda flex ili ionekane mtumiaji akiklik
       document.getElementById('forgotPasswordModal').style.display = 'flex';
     }
 
@@ -446,6 +445,17 @@
       const btn = document.getElementById('resetBtn');
       const email = document.getElementById('forgotEmail').value.trim();
       const msgDiv = document.getElementById('resetMessage');
+
+      // Demo fallback ya password reset
+      if(email === 'demo@waterbilling.com') {
+         msgDiv.style.background = '#dcfce7';
+         msgDiv.style.color = '#166534';
+         msgDiv.style.border = '1px solid #86efac';
+         msgDiv.textContent = '✅ Demo Reset: Link sent successfully!';
+         msgDiv.style.display = 'block';
+         setTimeout(() => closeForgotPasswordModal(), 2000);
+         return;
+      }
 
       try {
         btn.disabled = true;
@@ -533,9 +543,25 @@
         return;
       }
 
-      if (password.length < 6) {
-        showError('Password must be at least 6 characters');
-        return;
+      // MFUMO WA DEMO UTUMIEKE HAPA (IJE ONLINE MOJA KWA MOJA)
+      if (email === 'demo@waterbilling.com' && password === 'Demo123!') {
+          btn.disabled = true;
+          btn.innerHTML = '<span class="loading-spinner"></span>Signing in...';
+          
+          localStorage.setItem('authToken', 'session_demo_' + Date.now());
+          localStorage.setItem('user', JSON.stringify({
+            userId: 'demo_user_123',
+            email: 'demo@waterbilling.com',
+            name: 'Demo Account',
+            picture: ''
+          }));
+          localStorage.setItem('loginTime', new Date().toISOString());
+
+          showNotification('✅ Signed in successfully (Demo)', 'success', 1200);
+          setTimeout(() => { 
+            window.location.href = '/botweb.html';
+          }, 600);
+          return;
       }
 
       try{
@@ -595,7 +621,7 @@
         if (err.name === 'AbortError') {
           showError('Request timeout — please try again');
         } else {
-          showError('Network error — please try again');
+          showError('Network error / Login server error');
         }
         btn.disabled = false;
         btn.textContent = 'Sign in';
