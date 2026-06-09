@@ -1,363 +1,240 @@
 <!DOCTYPE html>
-<html lang="sw">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Water Billing System - Smart Gateway</title>
+  <title>Water Billing</title>
   <style>
     :root {
-      --bg: #090d16;
-      --surface: rgba(17, 24, 39, 0.7);
-      --border: rgba(255, 255, 255, 0.08);
-      --primary: #38bdf8;
-      --primary-glow: rgba(56, 189, 248, 0.4);
-      --accent: #6366f1;
-      --success: #22c55e;
-      --text: #f8fafc;
-      --muted: #94a3b8;
+      color-scheme: dark;
+      color: #e2e8f0;
+      background: #0f172a;
+      accent-color: #38bdf8;
     }
 
     * {
       box-sizing: border-box;
-      margin: 0;
-      padding: 0;
     }
 
     body {
-      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-      background: radial-gradient(circle at 50% 0%, #1e1b4b 0%, var(--bg) 70%);
-      color: var(--text);
+      margin: 0;
       min-height: 100vh;
+      font-family: system-ui, sans-serif;
+      background: linear-gradient(135deg, #020617 0%, #0f172a 100%);
+      color: #e2e8f0;
       display: flex;
-      flex-direction: column;
-      justify-content: center;
       align-items: center;
-      padding: 20px;
-      overflow-x: hidden;
+      justify-content: center;
+      padding: 24px;
+      overflow: hidden;
+      position: relative;
     }
 
-    /* Ambient Background Glows */
-    .glow-orb {
+    .video-shell {
+      position: fixed;
+      inset: 0;
+      z-index: -2;
+      overflow: hidden;
+      background: #020617;
+    }
+
+    .video-shell iframe {
+      width: 100vw;
+      height: 100vh;
+      border: 0;
+      pointer-events: none;
+      transform: scale(1.05);
+      filter: brightness(0.45) saturate(1.08);
+    }
+
+    .video-overlay {
       position: absolute;
-      width: 350px;
-      height: 350px;
-      border-radius: 50%;
-      background: var(--primary-glow);
-      filter: blur(80px);
+      inset: 0;
+      background: linear-gradient(135deg, rgba(15, 23, 42, 0.78), rgba(15, 23, 42, 0.6));
       z-index: -1;
-      top: 10%;
-      opacity: 0.6;
     }
 
-    .container {
-      background: var(--surface);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border: 1px solid var(--border);
-      border-radius: 28px;
-      padding: 40px;
-      width: 100%;
-      max-width: 500px;
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    .panel {
+      width: min(680px, 100%);
+      padding: 36px;
+      border-radius: 24px;
+      background: rgba(15, 23, 42, 0.96);
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.3);
       text-align: center;
-      animation: fadeIn 0.8s ease-out;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(20px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    .logo-area {
-      margin-bottom: 25px;
-    }
-
-    .logo-icon {
-      font-size: 3.5rem;
-      display: inline-block;
-      animation: pulse 2s infinite ease-in-out;
-    }
-
-    @keyframes pulse {
-      0%, 100% { transform: scale(1); filter: drop-shadow(0 0 0px var(--primary)); }
-      50% { transform: scale(1.05); filter: drop-shadow(0 0 15px var(--primary)); }
     }
 
     h1 {
-      font-size: 2rem;
-      font-weight: 800;
-      letter-spacing: -0.025em;
-      background: linear-gradient(to right, #fff, var(--primary));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      margin-bottom: 8px;
+      margin: 0 0 14px;
+      font-size: clamp(2rem, 3vw, 2.7rem);
     }
 
-    p.subtitle {
-      color: var(--muted);
-      font-size: 0.95rem;
-      margin-bottom: 30px;
+    p {
+      margin: 0 0 28px;
+      line-height: 1.75;
+      color: #94a3b8;
     }
 
-    /* Sync Status Box */
-    .sync-card {
-      background: rgba(0, 0, 0, 0.25);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 16px;
-      margin-bottom: 35px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      text-align: left;
-    }
-
-    .sync-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .sync-title {
-      font-size: 0.85rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--muted);
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .badge {
-      font-size: 0.75rem;
-      padding: 4px 10px;
-      border-radius: 20px;
-      font-weight: 600;
-      background: rgba(34, 197, 94, 0.15);
-      color: var(--success);
-      border: 1px solid rgba(34, 197, 94, 0.2);
-    }
-
-    .badge.syncing {
-      background: rgba(56, 189, 248, 0.15);
-      color: var(--primary);
-      border: 1px solid rgba(56, 189, 248, 0.2);
-    }
-
-    .sync-info {
-      font-size: 0.9rem;
-      color: #e2e8f0;
-      display: flex;
-      justify-content: space-between;
-    }
-
-    .btn-sync {
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid var(--border);
-      color: var(--text);
-      padding: 8px 14px;
-      border-radius: 10px;
-      font-size: 0.85rem;
-      font-weight: 600;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      transition: all 0.2s;
-    }
-
-    .btn-sync:hover {
-      background: rgba(56, 189, 248, 0.1);
-      border-color: var(--primary);
-      color: var(--primary);
-    }
-
-    /* Action Buttons Navigation */
-    .navigation-grid {
+    .buttons {
       display: grid;
-      grid-template-columns: 1fr;
-      gap: 14px;
+      gap: 12px;
+      margin: 0 auto;
+      max-width: 420px;
     }
 
-    .btn-nav {
-      position: relative;
-      padding: 16px 24px;
-      border-radius: 14px;
-      font-size: 1.05rem;
-      font-weight: 700;
-      cursor: pointer;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      display: flex;
-      align-items: center;
+    .button {
+      display: inline-flex;
       justify-content: center;
-      gap: 10px;
+      align-items: center;
+      padding: 14px 18px;
+      border-radius: 14px;
       text-decoration: none;
-      border: 1px solid transparent;
+      font-weight: 700;
+      transition: transform 0.2s ease, background-color 0.2s ease;
     }
 
-    .btn-login {
-      background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
-      color: #000;
-      font-weight: 800;
-      box-shadow: 0 4px 15px rgba(56, 189, 248, 0.25);
+    .button-primary {
+      background: linear-gradient(135deg, #2563eb 0%, #06b6d4 100%);
+      color: white;
     }
 
-    .btn-login:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 25px var(--primary-glow);
-      filter: brightness(1.1);
+    .button-secondary {
+      background: rgba(255, 255, 255, 0.08);
+      color: #e2e8f0;
+      border: 1px solid rgba(148, 163, 184, 0.2);
     }
 
-    .btn-admin {
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid var(--border);
-      color: var(--text);
-    }
-
-    .btn-admin:hover {
-      background: rgba(255, 255, 255, 0.07);
-      border-color: rgba(255, 255, 255, 0.2);
+    .button:hover {
       transform: translateY(-2px);
     }
 
-    .footer-text {
-      margin-top: 35px;
-      font-size: 0.8rem;
-      color: var(--muted);
+    footer {
+      margin-top: 32px;
+      color: #94a3b8;
+      font-size: 0.95rem;
     }
 
-    /* Rotation Utility for Sync */
-    .rotate {
-      animation: spin 1s linear infinite;
+    footer a {
+      color: #38bdf8;
+      text-decoration: none;
     }
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
+
+    footer a:hover {
+      text-decoration: underline;
     }
   </style>
 </head>
 <body>
-
-  <div class="glow-orb"></div>
-
-  <div class="container">
-    <div class="logo-area">
-      <span class="logo-icon">🌊</span>
-      <h1>H2O Billing Pro</h1>
-      <p class="subtitle">Smart Management & Data Sync Gateway</p>
-    </div>
-
-    <div class="sync-card">
-      <div class="sync-header">
-        <div class="sync-title">
-          <span>🔄 Storage Engine</span>
-        </div>
-        <span id="syncStatusBadge" class="badge">Synced</span>
-      </div>
-      <div class="sync-info">
-        <div>Offline Queue: <strong id="offlineCount" style="color:var(--primary);">0 Items</strong></div>
-        <button class="btn-sync" onclick="syncOfflineRecords()" id="syncBtn">
-          <span id="syncIcon">⚡</span> Sync To Cloud
-        </button>
-      </div>
-    </div>
-
-    <div class="navigation-grid">
-      <a href="/login" class="btn-nav btn-login">
-        🔐 Open Customer & Staff Login
-      </a>
-      
-      <a href="/admin" class="btn-nav btn-admin">
-        🛠️ Direct Admin Dashboard
-      </a>
-    </div>
-
-    <div class="footer-text">
-      Water Billing Management System &copy; 2026 <br> Securely connected via Mongoose ODM
-    </div>
+  <div class="video-shell" aria-hidden="true">
+    <iframe src="https://www.youtube.com/embed/U9N2h3GY7jU?autoplay=1&mute=1&controls=0&loop=1&playlist=U9N2h3GY7jU&rel=0&showinfo=0" allow="autoplay; encrypted-media"></iframe>
+    <div class="video-overlay"></div>
   </div>
 
-  <script>
-    // Kazi ya Kuangalia na kusawazisha (Sync) data za LocalStorage kwenda MongoDB
-    function checkOfflineQueue() {
-      const localData = localStorage.getItem('water_records');
-      const records = localData ? JSON.parse(localData) : [];
-      const countEl = document.getElementById('offlineCount');
-      const badge = document.getElementById('syncStatusBadge');
+  <div class="panel">
+    <h1>Water Billing App</h1>
+    <p>Fast and clean billing workflows for dashboard users. Sign in, register, or open your dashboard directly.</p>
+    <div class="buttons">
+      <a class="button button-primary" href="login.html">Sign in</a>
+      <a class="button button-secondary" href="signup.html">Register</a>
+      <a class="button button-secondary" href="botweb.html">Open dashboard</a>
+    </div>
+    <footer>
+      <p>Built for simple water billing and record management.</p>
+    </footer>
+  </div>
+</body>
+</html>
 
-      countEl.innerText = `${records.length} Items`;
+        const data = await res.json();
+        document.getElementById('userInfo').innerText =
+          'Welcome, ' + (data.user.name || data.user.email);
 
-      if(records.length > 0) {
-        badge.innerText = "Pending Cloud Sync";
-        badge.className = "badge syncing";
-        badge.style.color = "#f59e0b";
-        badge.style.borderColor = "rgba(245, 158, 11, 0.2)";
-        badge.style.background = "rgba(245, 158, 11, 0.15)";
-      } else {
-        badge.innerText = "Cloud Synced";
-        badge.className = "badge";
-        badge.style.color = "var(--success)";
-        badge.style.borderColor = "rgba(34, 197, 94, 0.2)";
-        badge.style.background = "rgba(34, 197, 94, 0.15)";
+        loadDashboard();
+
+      } catch (e) {
+        console.error('Auth error:', e);
+        showStatus('Session expired. Redirecting to login...', 'error');
+        setTimeout(() => {
+          window.location.href = 'login.html';
+        }, 2000);
       }
     }
 
-    async function syncOfflineRecords() {
-      const localData = localStorage.getItem('water_records');
-      const records = localData ? JSON.parse(localData) : [];
-      const syncIcon = document.getElementById('syncIcon');
-      const syncBtn = document.getElementById('syncBtn');
+    // ================= LOAD DASHBOARD =================
+    async function loadDashboard() {
+      const dashboard = document.querySelector('.dashboard');
+      dashboard.classList.add('loading');
 
-      if (records.length === 0) {
-        alert("✨ Safi kabisa! Hakuna data za offline kwenye simu kwa sasa zote ziko MongoDB.");
-        return;
-      }
-
-      // Anza urembo wa kuzungusha icon
-      syncIcon.innerText = "🔄";
-      syncIcon.classList.add('rotate');
-      syncBtn.disabled = true;
-
-      let successCount = 0;
-
-      // Tuma kila rekodi iliyohifadhiwa kwenye simu kwenda kwenye server (MongoDB)
-      for (const rec of records) {
-        try {
-          const response = await fetch('/api/records', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(rec)
-          });
-          if (response.ok) successCount++;
-        } catch (err) {
-          console.error("Kushindwa kusync rekodi:", err);
+      try {
+        // Check cache first
+        if (cachedData && (Date.now() - cacheTime) < CACHE_DURATION) {
+          updateDashboardUI(cachedData);
+          dashboard.classList.remove('loading');
+          return;
         }
-      }
 
-      // Kusafisha LocalStorage baada ya kufanikiwa kusync kila kitu
-      if (successCount === records.length) {
-        localStorage.removeItem('water_records');
-        alert(`✅ Data zote (${successCount}) zimesawazishwa kikamilifu na MongoDB Cloud!`);
-      } else if (successCount > 0) {
-        const bado = records.length - successCount;
-        const zilizobaki = records.slice(successCount);
-        localStorage.setItem('water_records', JSON.stringify(zilizobaki));
-        alert(`⚠️ Baadhi ya data (${successCount}) zimesync, lakini ${bado} zimefeli. Jaribu tena.`);
-      } else {
-        alert("❌ Server ipo offline au imekataa kupokea data. Jaribu baadae.");
-      }
+        console.log('📡 Fetching records...');
 
-      // Zima urembo wa kuzungusha icon
-      syncIcon.innerText = "⚡";
-      syncIcon.classList.remove('rotate');
-      syncBtn.disabled = false;
-      checkOfflineQueue();
+        const res = await fetch('/get-records?limit=1000', {
+          credentials: 'same-origin',
+          signal: AbortSignal.timeout(10000)
+        });
+
+        if (!res.ok) throw new Error('API ERROR ' + res.status);
+
+        const data = await res.json();
+        console.log('📊 Received data:', data);
+
+        // Cache the data
+        cachedData = data;
+        cacheTime = Date.now();
+
+        updateDashboardUI(data);
+        showStatus('Dashboard updated', 'success');
+
+      } catch (e) {
+        console.error('❌ Dashboard error:', e);
+
+        if (retryCount > 0) {
+          retryCount--;
+          console.log('🔁 Retrying...', retryCount);
+          showStatus(`Loading... (${3 - retryCount}/3)`, 'info');
+          setTimeout(loadDashboard, 2000);
+        } else {
+          showStatus('Failed to load dashboard. Please try again.', 'error');
+        }
+      } finally {
+        dashboard.classList.remove('loading');
+      }
     }
 
-    // Angalia kama kuna data simuni pindi tu ukurasa unapofunguka
-    window.onload = checkOfflineQueue;
+    function updateDashboardUI(data) {
+      const records = data.records || [];
+
+      const totalBills = records.length;
+      const totalRevenue = records.reduce((a, b) => a + (b.total || 0), 0);
+      const totalUsage = records.reduce((a, b) => a + (b.usage || 0), 0);
+      const avgBill = totalBills ? totalRevenue / totalBills : 0;
+
+      document.getElementById('totalBills').innerText = totalBills.toLocaleString();
+      document.getElementById('totalRevenue').innerText =
+        'TZS ' + totalRevenue.toLocaleString('en-TZ', { maximumFractionDigits: 0 });
+      document.getElementById('avgBill').innerText =
+        'TZS ' + avgBill.toLocaleString('en-TZ', { maximumFractionDigits: 0 });
+      document.getElementById('totalUsage').innerText =
+        totalUsage.toFixed(2) + ' units';
+
+      console.log('✅ Dashboard updated');
+    }
+
+    // ================= REFRESH DASHBOARD =================
+    function refreshDashboard() {
+      retryCount = 3;
+      cachedData = null;
+      cacheTime = 0;
+      loadDashboard();
+    }
   </script>
+
 </body>
 </html>
