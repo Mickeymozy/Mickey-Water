@@ -13,6 +13,7 @@
       accent-color: #38bdf8;
       --warning: #f59e0b;
       --success: #22c55e;
+      --error: #dc2626;
     }
 
     * { box-sizing: border-box; }
@@ -186,7 +187,7 @@
       color: #cbe7ff;
       border: 1px solid transparent;
     }
-    
+
     .message.error {
       background: rgba(248, 113, 113, 0.15);
       color: #fca5a5;
@@ -206,11 +207,77 @@
       margin-top: 20px;
     }
 
+    /* Mfumo wa Access Denied Visuals */
+    .denied-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 80vh;
+      text-align: center;
+      padding: 20px;
+    }
+    .denied-card {
+      background: rgba(30, 41, 59, 0.7);
+      border: 2px solid var(--error);
+      padding: 40px;
+      border-radius: 24px;
+      max-width: 500px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    }
+
     @media (max-width: 720px) {
       header { flex-direction: column; align-items: flex-start; }
       nav { width: 100%; justify-content: flex-start; }
     }
   </style>
+
+  <script>
+    // Kikao cha usalama (Access Control) - Kinaanza kabla ya page kufunguka kabisa
+    (function checkAdminAccess() {
+      const userString = localStorage.getItem('user');
+      const adminEmail = 'mickidadyhamza@gmail.com';
+      let accessGranted = false;
+
+      if (userString) {
+        try {
+          const user = JSON.parse(userString);
+          if (user && user.email === adminEmail) {
+            accessGranted = true;
+          }
+        } catch (e) {
+          console.error("Error parsing user data from localStorage", e);
+        }
+      }
+
+      // Kama sio admin, badilisha HTML nzima kuonyesha Access Denied
+      if (!accessGranted) {
+        window.stop(); // Inasimamisha upakiaji wa bando lolote lililobaki
+        document.documentElement.innerHTML = `
+          <head>
+            <title>403 - Access Denied</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+              body { background: #0b1223; color: #e2e8f0; font-family: system-ui, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+              .denied-card { background: rgba(15, 23, 42, 0.95); border: 1px solid #ef4444; border-radius: 24px; padding: 40px; text-align: center; max-width: 450px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
+              h1 { color: #ef4444; margin-top: 0; font-size: 2rem; }
+              p { color: #94a3b8; line-height: 1.6; margin-bottom: 24px; }
+              a { display: inline-block; background: #2563eb; color: white; padding: 12px 24px; border-radius: 12px; text-decoration: none; font-weight: bold; transition: background 0.2s; }
+              a:hover { background: #1d4ed8; }
+            </style>
+          </head>
+          <body>
+            <div class="denied-card">
+              <div style="font-size: 50px; margin-bottom: 10px;">🚫</div>
+              <h1>Access Denied</h1>
+              <p>Huna ruhusa ya kuingia kwenye ukurasa huu. Ukurasa huu ni maalum kwa ajili ya Msimamizi Mkuu (Admin) tu.</p>
+              <a href="login.html">Sign In kama Admin</a>
+            </div>
+          </body>
+        `;
+      }
+    })();
+  </script>
 </head>
 <body>
   <header>
@@ -269,11 +336,9 @@
   <footer>© 2026 Water Billing. Admin access only.</footer>
 
   <script>
-    // Endpoint URL kutoka kwenye server yako
     const STATS_URL = '/api/admin/stats';
     const NOTIFY_URL = '/api/admin/notify';
 
-    // Kazi ya kubadilisha muonekano wa kiashiria cha mtandao
     function setStatusIndicator(offline) {
       const statusSpan = document.getElementById('connectionStatus');
       if (offline) {
@@ -287,48 +352,55 @@
       }
     }
 
-    // Kupata takwimu (Kwanza kutoka MongoDB, ikifeli inaenda LocalStorage)
+    // Inapata takwimu kutoka kwenye Server (Mongoose/MongoDB)
     async function refreshStats() {
       showStatus('Loading system data...', 'success');
-      
+
       try {
-        const response = await fetch(STATS_URL, { credentials: 'include' });
+        const response = await fetch(STATS_URL, { credentials: 'same-origin' });
+        
+        // Kama server imekataa kwa sababu ya ulinzi (mfano 401 au 403)
+        if (response.status === 401 || response.status === 403) {
+            showStatus('❌ Unauthorized server access! Redirecting...', 'error');
+            setTimeout(() => logout(), 2000);
+            return;
+        }
+
         if (!response.ok) throw new Error('Server returned an error');
         const data = await response.json();
-        
-        document.getElementById('usersCount').innerText = data.totalUsers || '1'; // Admin mwenyewe
+
+        document.getElementById('usersCount').innerText = data.totalUsers || '0'; 
         document.getElementById('recordsCount').innerText = data.totalRecords || '0';
         document.getElementById('resetCount').innerText = data.pendingResets || '0';
-        
+
         setStatusIndicator(false);
         showStatus('Stats synchronized with MongoDB successfully.', 'success');
       } catch (error) {
         console.warn('Haikuweza kuunganishwa na server. Tunatafuta data kwenye LocalStorage...', error);
         setStatusIndicator(true);
-        
-        // Kusoma kutoka LocalStorage (Fallback Strategy)
+
         const localData = localStorage.getItem('water_records');
         const records = localData ? JSON.parse(localData) : [];
-        
+
         document.getElementById('usersCount').innerText = '1 (Local Admin)';
         document.getElementById('recordsCount').innerText = records.length;
         document.getElementById('resetCount').innerText = '0 (Offline)';
-        
+
         showStatus('⚠️ Displaying offline cached data from LocalStorage.', 'error');
       }
     }
 
-    // Kushughulikia fomu ya kutuma Notifications
+    // Kutuma Notifications kwenda backend
     document.getElementById('notificationForm').addEventListener('submit', async function(e) {
       e.preventDefault();
-      
+
       const title = document.getElementById('notificationTitle').value;
       const body = document.getElementById('notificationBody').value;
       const url = document.getElementById('notificationUrl').value;
       const sendBtn = document.getElementById('sendBtn');
-      
+
       const payload = { title, body, url, timestamp: new Date().toISOString() };
-      
+
       sendBtn.disabled = true;
       sendBtn.innerText = 'Sending...';
 
@@ -337,8 +409,13 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
-          credentials: 'include'
+          credentials: 'same-origin'
         });
+
+        if (response.status === 401 || response.status === 403) {
+            showStatus('❌ You do not have permission to broadcast.', 'error');
+            return;
+        }
 
         if (response.ok) {
           showStatus('🚀 Notification broadcasted successfully via server!', 'success');
@@ -348,12 +425,11 @@
         }
       } catch (error) {
         console.error('Notification error:', error);
-        
-        // Kama iko offline, tunaihifadhi kwenye local storage kama "Draft/Pending"
+
         const localAnnouncements = localStorage.getItem('local_notifications') ? JSON.parse(localStorage.getItem('local_notifications')) : [];
         localAnnouncements.push(payload);
         localStorage.setItem('local_notifications', JSON.stringify(localAnnouncements));
-        
+
         showStatus('⚠️ Server offline! Notification saved locally as draft.', 'error');
       } finally {
         sendBtn.disabled = false;
@@ -361,32 +437,29 @@
       }
     });
 
-    // Kazi ya kuonyesha ujumbe wa Alerts chini ya kadi
     function showStatus(text, type = 'success') {
       const msgDiv = document.getElementById('statusMessage');
       msgDiv.innerText = text;
       msgDiv.className = `message ${type}`;
       msgDiv.style.display = 'block';
-      
-      // Kuficha ujumbe kiotomatiki baada ya sekunde 5
+
       setTimeout(() => {
         msgDiv.style.display = 'none';
       }, 5000);
     }
 
-    // Kazi ya Logout
     async function logout() {
-      // Futa pia na session za uongo za LocalStorage tulizoweka kwenye login.html
-      localStorage.removeItem('login_mode');
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('user');
+      localStorage.removeItem('loginTime');
       try {
-        await fetch('/api/logout', { method: 'POST', credentials: 'include' });
+        await fetch('/api/logout', { method: 'POST', credentials: 'same-origin' });
         window.location.href = 'login.html';
       } catch(err) {
         window.location.href = 'login.html';
       }
     }
 
-    // Pakia data mara tu ukurasa unapofunguka
     window.onload = refreshStats;
   </script>
 </body>
