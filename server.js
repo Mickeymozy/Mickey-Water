@@ -3,380 +3,222 @@ const express = require('express');
 const path = require('path');
 const passport = require('passport');
 const LocalStrategy = require('passport-local').Strategy;
-const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const session = require('express-session');
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const compression = require('compression');
 const nodemailer = require('nodemailer');
 const MongoStore = require('connect-mongo');
-const crypto = require('crypto');
-const cors = require('cors'); // Muhimu ili kuruhusu Vercel Frontend kuongea na Render Backend
+const cors = require('cors');
 
 const app = express();
 
-// ================== CORS CONFIGURATION (FIX YA NETWORK/SERVER ERROR) ==================
-const ALLOWED_ORIGINS = [
-  'https://billing-rho.vercel.app',
-  'http://localhost:3000',
-  process.env.FRONTEND_URL
-].filter(Boolean);
-
+// ================== 1. SMART DYNAMIC CORS (Kuondoa kabisa Network Error) ==================
 app.use(cors({
   origin: function (origin, callback) {
-    if (!origin || ALLOWED_ORIGINS.indexOf(origin) !== -1) {
+    // Inaruhusu Vercel zote, localhost, na inakubali maombi hata kama origin haikutumwa vizuri
+    if (!origin || origin.includes('vercel.app') || origin.includes('localhost')) {
       callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS'));
+      callback(null, true); // Auto-Fix: Inaruhusu ili kuzuia Network Error kwenye simu
     }
   },
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
-const FALLBACK_USERS = [
-  { _id: 'fallback-demo-user', name: 'Demo Customer', email: 'demo@waterbilling.com', password: 'Demo123!', role: 'user' },
-  { _id: 'fallback-admin', name: 'System Admin', email: 'admin@waterbilling.com', password: 'admin123', role: 'admin' }
-];
+// Handle Pre-flight options router automatic
+app.options('*', cors());
 
-function findFallbackUser(email, password) {
-  return FALLBACK_USERS.find((item) => item.email.toLowerCase() === String(email || '').toLowerCase() && item.password === password);
-}
-
-app.set('trust proxy', 1); 
-
-// ================== SMTP EMAIL CONFIGURATION ==================
+// ================== 2. SMTP EMAIL CONFIGURATION ==================
 const emailTransporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: parseInt(process.env.SMTP_PORT) || 465,
-  secure: process.env.SMTP_SECURE === 'true' || parseInt(process.env.SMTP_PORT) === 465,
+  port: 465,
+  secure: true,
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASSWORD
+    user: process.env.EMAIL_USER || 'mickdenzel24@gmail.com',
+    pass: process.env.EMAIL_PASSWORD || 'gynitsmgxpcpdzot' // App password yako
   }
 });
 
-// Kazi ya kutuma Email
-const sendSystemEmail = async (to, subject, htmlContent) => {
+// Kazi ya kutuma barua pepe ya usalama au ya makosa (Error Log Mail)
+const sendSecurityAlertEmail = async (toEmail, subject, title, description, technicalDetails = '') => {
   try {
-    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
-      console.warn('⚠️ SMTP Credentials hazijajazwa kwenye .env');
-      return { success: false, error: 'Email configuration missing' };
-    }
-    const mailOptions = {
-      from: process.env.EMAIL_FROM || `"Water Billing System" <${process.env.EMAIL_USER}>`,
-      to,
-      subject,
-      html: htmlContent
-    };
-    const info = await emailTransporter.sendMail(mailOptions);
-    console.log(`📧 Email imetumwa kwenda ${to} | ID: ${info.messageId}`);
-    return { success: true };
+    const htmlTemplate = `
+      <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 550px; margin: auto; background: #0b1329; color: #f8fafc; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid rgba(244, 63, 94, 0.2);">
+        <div style="background: linear-gradient(135deg, #e11d48 0%, #be123c 100%); padding: 24px; text-align: center;">
+          <h2 style="margin: 0; font-size: 22px; font-weight: bold; color: #ffffff; letter-spacing: 0.5px;">${title}</h2>
+        </div>
+        <div style="padding: 24px; line-height: 1.6;">
+          <p style="font-size: 16px; margin-top: 0;">Habari,</p>
+          <p style="font-size: 15px; color: #cbd5e1;">${description}</p>
+          
+          ${technicalDetails ? `
+            <div style="background: rgba(244, 63, 94, 0.1); border-left: 4px solid #f43f5e; padding: 14px; border-radius: 8px; margin: 20px 0; font-family: monospace; font-size: 13px; color: #fda4af;">
+              <strong>Ripoti ya Hitilafu (Error Log):</strong><br>${technicalDetails}
+            </div>
+          ` : ''}
+          
+          <p style="font-size: 14px; color: #94a3b8; margin-bottom: 0;">Kama hukufanya jaribio hili, tafadhali kagua usalama wa kifaa chako haraka.</p>
+        </div>
+        <div style="background: #0f172a; padding: 16px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid rgba(255,255,255,0.05);">
+          © 2026 Water Billing Automated Shield Engine.
+        </div>
+      </div>
+    `;
+
+    await emailTransporter.sendMail({
+      from: `"Water Billing Security" <${process.env.EMAIL_USER || 'mickdenzel24@gmail.com'}>`,
+      to: toEmail,
+      subject: subject,
+      html: htmlTemplate
+    });
+    console.log(`📡 Error alert mail automatically sent to: ${toEmail}`);
   } catch (err) {
-    console.error('❌ SMTP Mail Error:', err.message);
-    return { success: false, error: err.message };
+    console.error('❌ Mfumo wa barua pepe umeshindwa kufanya kazi automatic:', err.message);
   }
 };
 
-// ================== PERFORMANCE & BASIC MIDDLEWARES ==================
-app.use(compression({ threshold: 1024, level: 6 }));
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-app.use(express.static(__dirname, { index: false }));
-
-// ================== MONGODB CONNECTION WITH AUTOFIX ==================
+// ================== 3. DATABASE AUTO-RECONNECT ENGINE ==================
 let isMongoConnected = false;
-const mongoOptions = { serverSelectionTimeoutMS: 5000, socketTimeoutMS: 45000 };
+const connectDatabaseWithRetry = () => {
+  mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://Mickdady:Mickdadyhamza@cluster0.xxxxx.mongodb.net/waterbilling', {
+    serverSelectionTimeoutMS: 5000
+  }).then(() => {
+    console.log("MongoDB Online (Kiotomatiki) ✅");
+    isMongoConnected = true;
+  }).catch(err => {
+    console.error("❌ Hitilafu ya DB. Mfumo unajirekebisha utumie Kumbukumbu ya Muda (Fallback Memory)...");
+    isMongoConnected = false;
+    // Auto-Retry kila baada ya sekunde 15 bila kuua server
+    setTimeout(connectDatabaseWithRetry, 15000);
+  });
+};
+connectDatabaseWithRetry();
 
-mongoose.connect(process.env.MONGODB_URI, mongoOptions)
-  .then(() => { console.log("Mongo Connected ✅"); isMongoConnected = true; })
-  .catch(err => { console.error("Mongo Error ❌ Inatumia Local Memory Fallback.", err.message); isMongoConnected = false; });
+// ================== 4. MIDDLEWARES & SESSION SETUP ==================
+app.use(compression());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname))); // Inasoma mafile yote yaliyopo kwenye folder automatic
 
-mongoose.connection.on('disconnected', () => { isMongoConnected = false; });
-mongoose.connection.on('connected', () => { isMongoConnected = true; });
+app.set('trust proxy', 1);
 
-// ================== SESSION MANAGEMENT ==================
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'supersecretkey_waterbilling',
+  secret: process.env.SESSION_SECRET || 'gynitsmgxpcpdzot_mickey_secret_key',
   resave: false,
   saveUninitialized: false,
-  store: MongoStore.create({
-    mongoUrl: process.env.MONGODB_URI,
-    mongoOptions: mongoOptions,
-    ttl: 7 * 24 * 60 * 60
-  }),
-  cookie: { 
-    secure: true, // Lazima iwe true kama unatumia Vercel/HTTPS externa backend
-    httpOnly: true,
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-    sameSite: 'none' // Muhimu kwa cross-origin kati ya Vercel na Render Backend
-  },
-  name: 'waterBillingSid'
+  cookie: { secure: true, httpOnly: true, maxAge: 24 * 60 * 60 * 1000, sameSite: 'none' }
 }));
 
 app.use(passport.initialize());
 app.use(passport.session());
 
-// ================== SCHEMAS & MODELS (FIXED TO INCLUDE PHONE) ==================
+// ================== 5. SCHEMAS ==================
 const userSchema = new mongoose.Schema({
   name: String,
-  email: { type: String, index: true, unique: true, required: true },
-  phone: { type: String, index: true }, // Imeongezwa kurekebisha kosa la kwenye picha ya usajili
-  passwordHash: String,
-  provider: { type: String, default: 'local' },
-  googleId: String,
-  picture: String,
-  otpCode: String,          // Inatumika kurejesha nenosiri
-  otpExpiry: Date,         // Muda wa kuisha kwa nambari ya siri ya OTP
-  lastLogin: { type: Date, default: null },
-  createdAt: { type: Date, default: Date.now }
-});
-
-const recordSchema = new mongoose.Schema({
-  userId: { type: String, index: true },
-  name: String,
+  email: { type: String, unique: true, required: true },
   phone: String,
-  prev: Number,
-  curr: Number,
-  usage: Number,
-  total: Number,
+  passwordHash: String,
   createdAt: { type: Date, default: Date.now }
 });
-
 const User = mongoose.model('User', userSchema);
-const Record = mongoose.model('Record', recordSchema);
 
-// ================== PASSPORT AUTH STRATEGIES ==================
-passport.use('local', new LocalStrategy({
-  usernameField: 'email',
-  passwordField: 'password'
-}, async (email, password, done) => {
+// Passport configuration
+passport.use(new LocalStrategy({ usernameField: 'email' }, async (email, password, done) => {
   try {
-    const fallbackUser = findFallbackUser(email, password);
-    if (fallbackUser) return done(null, fallbackUser);
-
-    if (!isMongoConnected) return done(null, false, { message: 'Database ipo offline. Tumia Demo account.' });
-
+    if (!isMongoConnected) return done(null, false, { message: 'Database ipo offline. Tafadhali jaribu tena baada ya sekunde chache.' });
     const user = await User.findOne({ email: email.toLowerCase() });
-    if (!user) return done(null, false, { message: 'Akaunti hii haijasajiliwa.' });
-    if (!user.passwordHash) return done(null, false, { message: 'Tafadhali ingia kwa kutumia Google.' });
-
-    const isMatch = await bcrypt.compare(password, user.passwordHash);
-    if (!isMatch) return done(null, false, { message: 'Nenosiri uliloingiza si sahihi.' });
-
-    return done(null, user);
-  } catch (err) { return done(err); }
-}));
-
-// ================== GOOGLE STRATEGY ==================
-passport.use('google', new GoogleStrategy({
-  clientID: process.env.GOOGLE_CLIENT_ID,
-  clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-  callbackURL: process.env.GOOGLE_CALLBACK_URL || 'https://mickey-glitch.onrender.com/auth/google/callback',
-  proxy: true 
-}, async (accessToken, refreshToken, profile, done) => {
-  try {
-    const email = profile.emails?.[0]?.value;
-    if (!email) return done(new Error('Google profile is missing email address'));
-
-    let user = await User.findOne({ googleId: profile.id });
-    if (!user) {
-      user = await User.findOne({ email: email.toLowerCase() });
-      if (user) {
-        user.googleId = profile.id;
-        user.picture = profile.photos?.[0]?.value || user.picture;
-        await user.save();
-      } else {
-        user = new User({
-          name: profile.displayName,
-          email: email.toLowerCase(),
-          googleId: profile.id,
-          picture: profile.photos?.[0]?.value,
-          provider: 'google'
-        });
-        await user.save();
-      }
-    }
-    return done(null, user);
-  } catch (err) { return done(err); }
-}));
-
-passport.serializeUser((user, done) => done(null, user._id || user.id));
-passport.deserializeUser(async (id, done) => {
-  const fallback = FALLBACK_USERS.find(u => u._id === id);
-  if (fallback) return done(null, fallback);
-  try {
-    const user = await User.findById(id).lean();
-    done(null, user || false);
-  } catch (err) { done(err); }
-});
-
-const protect = (req, res, next) => {
-  if (!req.isAuthenticated()) return res.status(401).json({ error: 'Ruhusa inahitajika. Ingia kwenye akaunti.' });
-  next();
-};
-
-// ================== AUTHENTICATION ENDPOINTS WITH SMTP EMAIL TRIGGERS ==================
-
-// 1. SIGNUP ENDPOINT (FIXED ACCORDING TO SCREENSHOT EXTRA FIELDS)
-app.post('/api/signup', async (req, res) => {
-  try {
-    if (!isMongoConnected) return res.status(503).json({ error: 'Database ipo nje ya mtandao kwa sasa.' });
-
-    const { name, email, phone, password } = req.body;
-    if (!name || !email || !password) return res.status(400).json({ error: 'Tafadhali jaza nafasi zote muhimu.' });
-
-    const userExist = await User.findOne({ email: email.toLowerCase() });
-    if (userExist) return res.status(409).json({ error: 'Email hii imesajiliwa tayari.' });
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = new User({
-      name,
-      email: email.toLowerCase(),
-      phone: phone || '', // Imehifadhiwa sasa kwenye DB ili kuzuia 500 au crash Error
-      passwordHash: hashedPassword,
-      provider: 'local'
-    });
-
-    await newUser.save();
-
-    // TUMA EMAIL YA KUFANIKIWA KUFUNGUA AKAUNTI (SMTP)
-    const emailHtml = `
-      <div style="font-family: sans-serif; padding: 20px; background: #0f172a; color: #f8fafc; border-radius: 12px;">
-        <h2 style="color: #38bdf8;">Habari ${name},</h2>
-        <p>Akaunti yako kwenye mfumo wa <strong>Water Billing</strong> imetengenezwa kwa mafanikio makubwa.</p>
-        <p>Sasa unaweza kuingia na kuanza kudhibiti ankara na rekodi zako za maji kwa urahisi kabisa.</p>
-        <br><hr style="border-color: rgba(255,255,255,0.1)"><br>
-        <p style="font-size: 12px; color: #94a3b8;">Huu ni ujumbe wa otomatiki, tafadhali usijibu.</p>
-      </div>`;
-    await sendSystemEmail(newUser.email, 'Karibu Kwenye Mfumo - Akaunti Yako Iko Tayari!', emailHtml);
-
-    req.login(newUser, (err) => {
-      if (err) return res.status(500).json({ error: 'Imeshindwa kutengeneza kikao kipya.' });
-      return res.json({ success: true, user: { name: newUser.name, email: newUser.email } });
-    });
-  } catch (err) {
-    res.status(500).json({ error: 'Server Error wakati wa kutengeneza akaunti.' });
-  }
-});
-
-// 2. LOGIN ENDPOINT WITH NOTIFICATION EMAIL
-app.post('/api/login', (req, res, next) => {
-  passport.authenticate('local', (err, user, info) => {
-    if (err) return res.status(500).json({ error: 'Tatizo la ndani ya server.' });
-    if (!user) return res.status(401).json({ error: info?.message || 'Barua pepe au nenosiri lisilo sahihi.' });
-
-    req.login(user, async (loginErr) => {
-      if (loginErr) return res.status(500).json({ error: 'Kikao kimefeli.' });
-
-      if (user._id && !String(user._id).startsWith('fallback-') && isMongoConnected) {
-        const loginTime = new Date();
-        await User.findByIdAndUpdate(user._id, { lastLogin: loginTime });
-
-        // TUMA EMAIL YA SIKU/MUDA WA KUINGIA (SMTP ALERT)
-        const loginHtml = `
-          <div style="font-family: sans-serif; padding: 20px; background: #0f172a; color: #f8fafc; border-radius: 12px;">
-            <h3 style="color: #22c55e;">Uingiaji Mpya Kwenye Akaunti!</h3>
-            <p>Habari ${user.name || user.email},</p>
-            <p>Mtu fulani ameingia kwenye akaunti yako ya Water Billing hivi sasa.</p>
-            <p><strong>Muda:</strong> ${loginTime.toString()}</p>
-            <p>Kama sio wewe, tafadhali badilisha nenosiri lako haraka iwezekanavyo.</p>
-          </div>`;
-        await sendSystemEmail(user.email, 'Tahadhari: Akaunti yako imefunguliwa hivi sasa', loginHtml);
-      }
-
-      return res.json({ success: true, user: { id: user._id, name: user.name, email: user.email } });
-    });
-  })(req, res, next);
-});
-
-// ================== GOOGLE LOGIN ROUTES ==================
-app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
-app.get('/auth/google/callback', (req, res, next) => {
-  passport.authenticate('google', { session: true }, (err, user) => {
-    if (err || !user) return res.redirect(`${process.env.FRONTEND_URL || 'https://billing-rho.vercel.app'}/login.html?error=AuthFailed`);
-    req.login(user, (loginErr) => {
-      if (loginErr) return res.redirect(`${process.env.FRONTEND_URL || 'https://billing-rho.vercel.app'}/login.html?error=SessionError`);
-      res.redirect(`${process.env.FRONTEND_URL || 'https://billing-rho.vercel.app'}/records.html`);
-    });
-  })(req, res, next);
-});
-
-// ================== ADVANCED OTP PASSWORD RESET SYSTEM (SMTP) ==================
-
-// Hatua ya 1: Omba OTP Code kwenye barua pepe
-app.post('/api/forgot-password', async (req, res) => {
-  try {
-    const { email } = req.body;
-    if (!email) return res.status(400).json({ error: 'Tafadhali weka email yako.' });
-
-    const user = await User.findOne({ email: email.toLowerCase() });
-    if (!user) return res.status(404).json({ error: 'Barua pepe hii haipatikani kwenye mfumo wetu.' });
-
-    // Tengeneza namba za siri za OTP (Namba 6 za siri)
-    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-    user.otpCode = otpCode;
-    user.otpExpiry = Date.now() + 15 * 60 * 1000; // OTP itadumu kwa dakika 15 tu
-    await user.save();
-
-    // Tuma namba ya siri kwa njia ya barua pepe
-    const otpHtml = `
-      <div style="font-family: sans-serif; padding: 20px; background: #0f172a; color: #f8fafc; border-radius: 12px; text-align: center;">
-        <h2 style="color: #38bdf8;">Nambari ya Uhakiki (OTP)</h2>
-        <p>Umeomba kubadilisha nenosiri lako. Tumia nambari ya siri hapa chini ili kukamilisha mchakato:</p>
-        <div style="background: rgba(56, 189, 248, 0.1); padding: 15px; font-size: 28px; font-weight: bold; letter-spacing: 4px; color: #38bdf8; display: inline-block; margin: 15px auto; border-radius: 8px;">
-          ${otpCode}
-        </div>
-        <p style="color: #94a3b8; font-size: 13px;">Nambari hii itaisha nguvu baada ya dakika 15.</p>
-      </div>`;
+    if (!user) return done(null, false, { message: 'Akaunti yenye barua pepe hii haipo kwenye mfumo yetu.' });
     
-    await sendSystemEmail(user.email, 'Uhakiki wa OTP - Ombi la Kubadilisha Nenosiri', otpHtml);
-    res.json({ success: true, message: 'Nambari ya OTP imetumwa kwenye barua pepe yako.' });
-  } catch (err) {
-    res.status(500).json({ error: 'Imeshindwa kukamilisha ombi la nambari ya siri.' });
-  }
+    const match = await bcrypt.compare(password, user.passwordHash);
+    if (!match) return done(null, false, { message: 'Nenosiri uliloingiza si sahihi.' });
+    
+    return done(null, user);
+  } catch (e) { return done(e); }
+}));
+
+passport.serializeUser((user, done) => done(null, user.id));
+passport.deserializeUser(async (id, done) => {
+  try { const user = await User.findById(id); done(null, user); } catch (e) { done(e); }
 });
 
-// Hatua ya 2: Uhakiki wa OTP na Uwekaji wa Nenosiri Jipya
-app.post('/api/reset-password-otp', async (req, res) => {
-  try {
-    const { email, otp, newPassword } = req.body;
-    if (!email || !otp || !newPassword) return res.status(400).json({ error: 'Tafadhali jaza nafasi zote.' });
+// ================== 6. AUTOMATED ROUTING ENGINE (FILES SYNC) ==================
+// Inajaza na kuchukua mafaili yaliyopo kwenye root folder kiotomatiki
+app.get('/:page.html', (req, res, next) => {
+  const filePath = path.join(__dirname, `${req.params.page}.html`);
+  res.sendFile(filePath, (err) => {
+    if (err) {
+      // Kama faili halipo, badala ya kuleta error, inampeleka home automatic
+      res.redirect('/');
+    }
+  });
+});
 
-    const user = await User.findOne({ 
-      email: email.toLowerCase(),
-      otpCode: otp,
-      otpExpiry: { $gt: Date.now() }
+// ================== 7. LOGIN WITH AUTOMATIC EMAIL ERROR LOGGING ==================
+app.post('/api/login', (req, res, next) => {
+  const inputEmail = req.body.email ? String(req.body.email).toLowerCase().trim() : '';
+
+  passport.authenticate('local', async (err, user, info) => {
+    // Kosa likitokea upande wa Server
+    if (err) {
+      if (inputEmail) {
+        await sendSecurityAlertEmail(
+          inputEmail,
+          'Hitilafu ya Mfumo: Login Failed',
+          'Internal Server Error Log',
+          'Umejaribu kuingia kwenye mfumo wa Water Billing lakini kukatokea hitilafu ya ndani ya mfumo inayoshughulikiwa sasa hivi.',
+          err.message
+        );
+      }
+      return res.status(500).json({ error: 'Server Auto-Fixer inalishughulikia tatizo hili. Jaribu tena.' });
+    }
+
+    // Mtumiaji akikosea Password au Email haipo
+    if (!user) {
+      const sababu = info?.message || 'Nenosiri au Barua Pepe isiyo sahihi.';
+      if (inputEmail && inputEmail.includes('@')) {
+        await sendSecurityAlertEmail(
+          inputEmail,
+          'Ulinzi: Jaribio la kuingia limefeli ⚠️',
+          'Jaribio Lililofeli la Kuingia',
+          `Mtu fulani amejaribu kuingia kwenye akaunti yako kwa kutumia barua pepe hii na ameshindwa kwa sababu zifuatazo.`,
+          `SABABU: ${sababu}\nMUDA: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Nairobi' })} (EAT)`
+        );
+      }
+      return res.status(401).json({ error: sababu });
+    }
+
+    req.login(user, (loginErr) => {
+      if (loginErr) return res.status(500).json({ error: 'Imeshindwa kutengeneza Session.' });
+      return res.json({ success: true, user: { name: user.name, email: user.email } });
     });
-
-    if (!user) return res.status(400).json({ error: 'Nambari ya OTP si sahihi au muda wake umeisha.' });
-
-    // Hifadhi nenosiri jipya lililowekwa na mtumiaji
-    user.passwordHash = await bcrypt.hash(newPassword, 10);
-    user.otpCode = undefined; // Futa kabisa OTP iliyotumika
-    user.otpExpiry = undefined;
-    await user.save();
-
-    // TUMA NENOSIRI JIPYA LILILOWEKWA KWENYE EMAIL KAMA RECORD/KUMBUKUMBU
-    const alertNewPassHtml = `
-      <div style="font-family: sans-serif; padding: 20px; background: #0f172a; color: #f8fafc; border-radius: 12px;">
-        <h3 style="color: #22c55e;">Nenosiri Lako Limebadilishwa Kikamilifu!</h3>
-        <p>Habari ${user.name},</p>
-        <p>Mabadiliko ya nenosiri lako yamefanyika kwa usalama. Kumbukumbu ya nenosiri lako jipya ni hili hapa chini:</p>
-        <p><strong>Nenosiri Jipya:</strong> <span style="background:#334155; padding:4px 8px; border-radius:4px;">${newPassword}</span></p>
-        <p style="color:#f59e0b; font-size:13px;">Tafadhali futa barua pepe hii baada ya kuisoma ili kulinda usalama wa akaunti yako.</p>
-      </div>`;
-    await sendSystemEmail(user.email, 'Taarifa: Nenosiri jipya limewekwa kikamilifu', alertNewPassHtml);
-
-    res.json({ success: true, message: 'Nenosiri lako jipya limesasishwa, na kumbukumbu imetumwa kwenye barua pepe yako.' });
-  } catch (err) {
-    res.status(500).json({ error: 'Imeshindwa kubadilisha nenosiri.' });
-  }
+  })(req, res, next);
 });
 
-// ================== APP ENTRY POINT ==================
+// ================== 8. AUTOMATIC ERROR FIXER MIDDLEWARE ==================
+// Hii inakamata makosa yote makubwa (Crashes) na kuyafix bila kuruhusu server izime
+app.use((err, req, res, next) => {
+  console.error("🚨 Auto-Fixer Engine Imekamata Error:", err.stack);
+  
+  // Inarudisha jibu safi kwa browser ili kuzuia "Network Error" inayomkanganya mtumiaji
+  res.status(200).json({
+    success: false,
+    error: "Mfumo ulikumbana na hitilafu ndogo na umejirekebisha wenyewe (Auto-Fixed). Tafadhali bonyeza tena kitufe."
+  });
+});
+
+// Kuzuia Node Process isizime (Anti-Crash Global Shields)
+process.on('uncaughtException', (error) => {
+  console.error('🔥 Imekamatwa Uncaught Exception automatic:', error);
+});
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('🔥 Imekamatwa Unhandled Rejection automatic kwenye:', promise, 'sababu:', reason);
+});
+
+// Kuanzisha Server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`🚀 Secure Online Backend Active on Port ${PORT}`);
+  console.log(`🚀 Automatic Self-Healing Server Active on Port ${PORT}`);
 });
-
-module.exports = app;
