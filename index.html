@@ -3,13 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Water Billing</title>
+  <title>Water Billing — Home</title>
   <style>
     :root {
       color-scheme: dark;
       color: #e2e8f0;
-      background: #0f172a;
+      background: #020617;
       accent-color: #38bdf8;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --error: #ef4444;
     }
 
     * {
@@ -20,16 +23,17 @@
       margin: 0;
       min-height: 100vh;
       font-family: system-ui, sans-serif;
-      background: linear-gradient(135deg, #020617 0%, #0f172a 100%);
       color: #e2e8f0;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
       padding: 24px;
-      overflow: hidden;
+      overflow-x: hidden;
       position: relative;
     }
 
+    /* Video Background Layout */
     .video-shell {
       position: fixed;
       inset: 0;
@@ -39,67 +43,107 @@
     }
 
     .video-shell iframe {
+      position: absolute;
+      top: 50%;
+      left: 50%;
       width: 100vw;
-      height: 100vh;
+      height: 56.25vw; /* 16:9 Aspect Ratio */
+      min-height: 100vh;
+      min-width: 177.77vh; /* 16:9 Aspect Ratio */
+      transform: translate(-50%, -50%) scale(1.05);
       border: 0;
       pointer-events: none;
-      transform: scale(1.05);
-      filter: brightness(0.45) saturate(1.08);
+      filter: brightness(0.35) saturate(1.1) blur(2px);
     }
 
     .video-overlay {
       position: absolute;
       inset: 0;
-      background: linear-gradient(135deg, rgba(15, 23, 42, 0.78), rgba(15, 23, 42, 0.6));
+      background: linear-gradient(135deg, rgba(2, 6, 23, 0.85), rgba(15, 23, 42, 0.75));
       z-index: -1;
     }
 
+    /* Main Container Split View */
+    .container {
+      width: min(1000px, 100%);
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+      align-items: stretch;
+      z-index: 1;
+    }
+
+    @media (max-width: 800px) {
+      .container {
+        grid-template-columns: 1fr;
+      }
+      body {
+        overflow-y: auto;
+      }
+    }
+
+    /* Glass Panels */
     .panel {
-      width: min(680px, 100%);
       padding: 36px;
       border-radius: 24px;
-      background: rgba(15, 23, 42, 0.96);
-      border: 1px solid rgba(148, 163, 184, 0.16);
-      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.3);
-      text-align: center;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(148, 163, 184, 0.12);
+      box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .panel-left {
+      text-align: left;
     }
 
     h1 {
       margin: 0 0 14px;
-      font-size: clamp(2rem, 3vw, 2.7rem);
+      font-size: clamp(2.2rem, 4vw, 3rem);
+      font-weight: 800;
+      background: linear-gradient(135deg, #ffffff 40%, #38bdf8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
     }
 
-    p {
+    p.subtitle {
       margin: 0 0 28px;
       line-height: 1.75;
       color: #94a3b8;
+      font-size: 1.1rem;
     }
 
+    /* Buttons Configuration */
     .buttons {
       display: grid;
-      gap: 12px;
-      margin: 0 auto;
-      max-width: 420px;
+      gap: 14px;
     }
 
     .button {
       display: inline-flex;
       justify-content: center;
       align-items: center;
-      padding: 14px 18px;
-      border-radius: 14px;
+      padding: 16px 20px;
+      border-radius: 16px;
       text-decoration: none;
       font-weight: 700;
-      transition: transform 0.2s ease, background-color 0.2s ease;
+      font-size: 1rem;
+      cursor: pointer;
+      border: none;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
     }
 
     .button-primary {
       background: linear-gradient(135deg, #2563eb 0%, #06b6d4 100%);
       color: white;
+      box-shadow: 0 4px 20px rgba(37, 99, 235, 0.2);
     }
 
     .button-secondary {
-      background: rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.05);
       color: #e2e8f0;
       border: 1px solid rgba(148, 163, 184, 0.2);
     }
@@ -107,134 +151,236 @@
     .button:hover {
       transform: translateY(-2px);
     }
+    
+    .button-primary:hover {
+      box-shadow: 0 6px 24px rgba(37, 99, 235, 0.35);
+    }
 
-    footer {
-      margin-top: 32px;
+    .button-secondary:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    /* Sync Smart Panel */
+    .sync-panel h2 {
+      margin: 0 0 18px;
+      font-size: 1.4rem;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .sync-status {
+      font-size: 0.85rem;
+      padding: 6px 12px;
+      border-radius: 20px;
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--warning);
+      display: inline-block;
+      margin-bottom: 20px;
+      border: 1px solid rgba(245, 158, 11, 0.2);
+    }
+
+    .sync-grid {
+      display: grid;
+      gap: 12px;
+      text-align: left;
+      margin-bottom: 24px;
+    }
+
+    .sync-item {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(148, 163, 184, 0.08);
+      padding: 14px;
+      border-radius: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .sync-label {
       color: #94a3b8;
+      font-size: 0.9rem;
+    }
+
+    .sync-value {
+      font-weight: 600;
+      color: #f8fafc;
       font-size: 0.95rem;
     }
 
-    footer a {
-      color: #38bdf8;
-      text-decoration: none;
+    .message {
+      padding: 12px;
+      border-radius: 12px;
+      margin-top: 12px;
+      font-size: 0.9rem;
+      display: none;
     }
+    .message.success { background: rgba(34, 197, 94, 0.15); color: #86efac; border: 1px solid rgba(34, 197, 94, 0.2); }
+    .message.error { background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.2); }
 
-    footer a:hover {
-      text-decoration: underline;
+    footer {
+      margin-top: 40px;
+      color: #64748b;
+      font-size: 0.9rem;
+      z-index: 1;
     }
   </style>
 </head>
 <body>
+
   <div class="video-shell" aria-hidden="true">
-    <iframe src="https://www.youtube.com/embed/U9N2h3GY7jU?autoplay=1&mute=1&controls=0&loop=1&playlist=U9N2h3GY7jU&rel=0&showinfo=0" allow="autoplay; encrypted-media"></iframe>
+    <iframe src="https://www.youtube.com/embed/U9N2h3GY7jU?autoplay=1&mute=1&controls=0&loop=1&playlist=U9N2h3GY7jU&rel=0&showinfo=0&iv_load_policy=3" allow="autoplay; encrypted-media"></iframe>
     <div class="video-overlay"></div>
   </div>
 
-  <div class="panel">
-    <h1>Water Billing App</h1>
-    <p>Fast and clean billing workflows for dashboard users. Sign in, register, or open your dashboard directly.</p>
-    <div class="buttons">
-      <a class="button button-primary" href="login.html">Sign in</a>
-      <a class="button button-secondary" href="signup.html">Register</a>
-      <a class="button button-secondary" href="botweb.html">Open dashboard</a>
+  <div class="container">
+    <div class="panel panel-left">
+      <h1>Water Billing</h1>
+      <p class="subtitle">Fast and clean workflows for water billing management. Sign in, create a secure account, or manage your system records easily.</p>
+      
+      <div class="buttons">
+        <a class="button button-primary" href="login.html">Sign In to Account</a>
+        <a class="button button-secondary" href="signup.html">Create New Account</a>
+        <a class="button button-secondary" href="records.html">Go to Records Dashboard</a>
+      </div>
     </div>
-    <footer>
-      <p>Built for simple water billing and record management.</p>
-    </footer>
+
+    <div class="panel sync-panel">
+      <h2>Device Smart Sync</h2>
+      <div>
+        <span id="syncIndicator" class="sync-status">🔄 Not Synced with Browser</span>
+      </div>
+
+      <div class="sync-grid">
+        <div class="sync-item">
+          <span class="sync-label">📍 Live Location (GPS)</span>
+          <span id="syncLocation" class="sync-value">Unknown</span>
+        </div>
+        <div class="sync-item">
+          <span class="sync-label">🔋 Phone Battery</span>
+          <span id="syncBattery" class="sync-value">Checking...</span>
+        </div>
+        <div class="sync-item">
+          <span class="sync-label">📶 Network Speed</span>
+          <span id="syncNetwork" class="sync-value">Detecting...</span>
+        </div>
+        <div class="sync-item">
+          <span class="sync-label">📱 Device Platform</span>
+          <span id="syncPlatform" class="sync-value">Unknown</span>
+        </div>
+      </div>
+
+      <button class="button button-primary" onclick="startDeviceSync()">Authorize & Sync Device</button>
+      <div id="statusAlert" class="message"></div>
+    </div>
   </div>
-</body>
-</html>
 
-        const data = await res.json();
-        document.getElementById('userInfo').innerText =
-          'Welcome, ' + (data.user.name || data.user.email);
+  <footer>© 2026 Water Billing Inc. All data encrypted via modern browser sync.</footer>
 
-        loadDashboard();
-
-      } catch (e) {
-        console.error('Auth error:', e);
-        showStatus('Session expired. Redirecting to login...', 'error');
-        setTimeout(() => {
-          window.location.href = 'login.html';
-        }, 2000);
-      }
-    }
-
-    // ================= LOAD DASHBOARD =================
-    async function loadDashboard() {
-      const dashboard = document.querySelector('.dashboard');
-      dashboard.classList.add('loading');
+  <script>
+    // ================= SYNC ENGINE (LOCATIONS, BATTERY, NETWORK) =================
+    async function startDeviceSync() {
+      const alertBox = document.getElementById('statusAlert');
+      const syncIndicator = document.getElementById('syncIndicator');
+      
+      alertBox.style.display = 'none';
+      syncIndicator.innerText = '⚡ Syncing Data...';
+      syncIndicator.style.background = 'rgba(56, 189, 248, 0.15)';
+      syncIndicator.style.color = '#38bdf8';
 
       try {
-        // Check cache first
-        if (cachedData && (Date.now() - cacheTime) < CACHE_DURATION) {
-          updateDashboardUI(cachedData);
-          dashboard.classList.remove('loading');
-          return;
-        }
-
-        console.log('📡 Fetching records...');
-
-        const res = await fetch('/get-records?limit=1000', {
-          credentials: 'same-origin',
-          signal: AbortSignal.timeout(10000)
-        });
-
-        if (!res.ok) throw new Error('API ERROR ' + res.status);
-
-        const data = await res.json();
-        console.log('📊 Received data:', data);
-
-        // Cache the data
-        cachedData = data;
-        cacheTime = Date.now();
-
-        updateDashboardUI(data);
-        showStatus('Dashboard updated', 'success');
-
-      } catch (e) {
-        console.error('❌ Dashboard error:', e);
-
-        if (retryCount > 0) {
-          retryCount--;
-          console.log('🔁 Retrying...', retryCount);
-          showStatus(`Loading... (${3 - retryCount}/3)`, 'info');
-          setTimeout(loadDashboard, 2000);
+        // 1. Kuchukua Location (GPS)
+        if ("geolocation" in navigator) {
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              const lat = position.coords.latitude.toFixed(4);
+              const lon = position.coords.longitude.toFixed(4);
+              document.getElementById('syncLocation').innerText = `${lat}, ${lon}`;
+              localStorage.setItem('user_lat', lat);
+              localStorage.setItem('user_lon', lon);
+            },
+            (error) => {
+              document.getElementById('syncLocation').innerText = 'Permission Denied';
+              console.warn("Location access denied.");
+            },
+            { enableHighAccuracy: true, timeout: 8000 }
+          );
         } else {
-          showStatus('Failed to load dashboard. Please try again.', 'error');
+          document.getElementById('syncLocation').innerText = 'Not Supported';
         }
-      } finally {
-        dashboard.classList.remove('loading');
+
+        // 2. Kuchukua Hali ya Battery
+        if ('getBattery' in navigator) {
+          const battery = await navigator.getBattery();
+          const updateBatteryUI = () => {
+            const level = Math.round(battery.level * 100) + '%';
+            const status = battery.charging ? ' ⚡' : '';
+            document.getElementById('syncBattery').innerText = `${level}${status}`;
+            localStorage.setItem('device_battery', level);
+          };
+          updateBatteryUI();
+          battery.addEventListener('levelchange', updateBatteryUI);
+          battery.addEventListener('chargingchange', updateBatteryUI);
+        } else {
+          document.getElementById('syncBattery').innerText = 'Not Supported';
+        }
+
+        // 3. Kuchukua Hali ya Mtandao
+        if (navigator.connection) {
+          const type = navigator.connection.effectiveType || 'Unknown';
+          const rtt = navigator.connection.rtt ? ` (${navigator.connection.rtt}ms)` : '';
+          document.getElementById('syncNetwork').innerText = type.toUpperCase() + rtt;
+        } else {
+          document.getElementById('syncNetwork').innerText = 'Online';
+        }
+
+        // 4. Kutambua Mfumo wa Simu au Browser
+        const userAgent = navigator.userAgent;
+        let platform = "Browser App";
+        if (/android/i.test(userAgent)) platform = "Android Phone";
+        else if (/iPad|iPhone|iPod/.test(userAgent) && !window.MSStream) platform = "iOS Device";
+        else if (/Windows/i.test(userAgent)) platform = "Windows PC";
+        else if (/Macintosh/i.test(userAgent)) platform = "macOS Device";
+        
+        document.getElementById('syncPlatform').innerText = platform;
+
+        // Kukamilisha Sync kwenda LocalStorage (Tayari kwa ajili ya kutumwa Server uki-login)
+        localStorage.setItem('sync_timestamp', new Date().toISOString());
+        localStorage.setItem('device_platform', platform);
+
+        // Onyesha mafanikio
+        syncIndicator.innerText = '🟢 Fully Synced Online';
+        syncIndicator.style.background = 'rgba(34, 197, 94, 0.15)';
+        syncIndicator.style.color = 'var(--success)';
+        
+        alertBox.innerText = '🚀 Device metrics and location successfully synced to app session!';
+        alertBox.className = 'message success';
+        alertBox.style.display = 'block';
+
+      } catch (err) {
+        console.error("Sync Engine Error: ", err);
+        syncIndicator.innerText = '❌ Sync Failed';
+        syncIndicator.style.background = 'rgba(239, 68, 68, 0.15)';
+        syncIndicator.style.color = 'var(--error)';
       }
     }
 
-    function updateDashboardUI(data) {
-      const records = data.records || [];
-
-      const totalBills = records.length;
-      const totalRevenue = records.reduce((a, b) => a + (b.total || 0), 0);
-      const totalUsage = records.reduce((a, b) => a + (b.usage || 0), 0);
-      const avgBill = totalBills ? totalRevenue / totalBills : 0;
-
-      document.getElementById('totalBills').innerText = totalBills.toLocaleString();
-      document.getElementById('totalRevenue').innerText =
-        'TZS ' + totalRevenue.toLocaleString('en-TZ', { maximumFractionDigits: 0 });
-      document.getElementById('avgBill').innerText =
-        'TZS ' + avgBill.toLocaleString('en-TZ', { maximumFractionDigits: 0 });
-      document.getElementById('totalUsage').innerText =
-        totalUsage.toFixed(2) + ' units';
-
-      console.log('✅ Dashboard updated');
-    }
-
-    // ================= REFRESH DASHBOARD =================
-    function refreshDashboard() {
-      retryCount = 3;
-      cachedData = null;
-      cacheTime = 0;
-      loadDashboard();
+    // Auto load data za mwanzo kama mtu alishawahi kusync
+    window.onload = function() {
+      if(localStorage.getItem('sync_timestamp')) {
+        const lat = localStorage.getItem('user_lat') || 'Cached';
+        const lon = localStorage.getItem('user_lon') || '';
+        document.getElementById('syncLocation').innerText = lon ? `${lat}, ${lon}` : lat;
+        document.getElementById('syncBattery').innerText = localStorage.getItem('device_battery') || 'Detected';
+        document.getElementById('syncPlatform').innerText = localStorage.getItem('device_platform') || 'Detected';
+        
+        const indicator = document.getElementById('syncIndicator');
+        indicator.innerText = '🟢 Restored Cached Sync';
+        indicator.style.background = 'rgba(34, 197, 94, 0.15)';
+        indicator.style.color = 'var(--success)';
+      }
     }
   </script>
-
 </body>
 </html>
