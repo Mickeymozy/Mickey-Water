@@ -1,89 +1,54 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Sign Up — Bot Panel</title>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300,400,600,700&display=swap" rel="stylesheet">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Water Billing | Sign Up</title>
   <style>
-    :root{--bg-1:#1e3a8a;--bg-2:#2563eb;--bg-3:#06b6d4;--card-bg:rgba(255,255,255,0.98);--accent-1:#2563eb;--accent-2:#06b6d4;--muted:#475569;--text-primary:#0f172a;--success:#059669;--error:#dc2626}
-    *{box-sizing:border-box}
-    body{font-family:'Poppins','Segoe UI',system-ui,Arial;margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--bg-1) 0%,var(--bg-2) 50%,var(--bg-3) 100%);padding:24px;letter-spacing:0.3px;overflow:hidden;position:relative}
-    .video-shell{position:fixed;inset:0;z-index:-2;overflow:hidden;background:#020617}
-    .video-shell iframe{width:100vw;height:100vh;border:0;pointer-events:none;transform:scale(1.05);filter:brightness(0.45) saturate(1.08)}
-    .video-overlay{position:absolute;inset:0;background:linear-gradient(135deg, rgba(15,23,42,0.78), rgba(15,23,42,0.6));z-index:-1}
-    .card{background:var(--card-bg);padding:22px;border-radius:16px;max-width:480px;width:100%;box-shadow:0 12px 40px rgba(0,0,0,0.12);border:1px solid rgba(255,255,255,0.3)}
-    h1{margin:0 0 8px 0;color:var(--text-primary);font-weight:800;font-size:1.5rem}
-    p{margin:0 0 14px 0;color:var(--muted);font-weight:500}
-    .row{margin-bottom:12px}
-    input{width:100%;padding:11px;border-radius:10px;border:2px solid #cbd5e1;font-family:Poppins,sans-serif;font-size:0.95rem;color:var(--text-primary);transition:all 0.3s;font-weight:500}
-    input:focus{outline:none;border-color:var(--accent-2);box-shadow:0 0 0 4px rgba(6,182,212,0.1);background:#f0f9ff}
-    button.primary{width:100%;padding:12px;border-radius:10px;border:none;background:linear-gradient(135deg,var(--accent-1),var(--accent-2));color:#fff;font-weight:800;cursor:pointer;text-transform:uppercase;letter-spacing:0.4px;font-size:0.9rem;transition:all 0.3s}
-    button.primary:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(37,99,235,0.3)}
-
-    /* Google Button Style */
-    .btn-google{display:inline-flex;align-items:center;justify-content:center;gap:10px;padding:12px;border-radius:10px;border:none;background:linear-gradient(135deg,var(--accent-1),var(--accent-2));color:#fff;font-weight:800;cursor:pointer;width:100%;text-decoration:none;margin-bottom:16px;letter-spacing:0.4px;transition:all 0.3s}
-    .btn-google:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(37,99,235,0.3)}
-    .btn-google img{height:20px}
-
-    .or{display:flex;align-items:center;gap:12px;margin:16px 0}
-    .or div{flex:1;height:1px;background:#e2e8f0}
-    .or span{font-size:12px;color:var(--muted);font-weight:600}
-
-    .small{font-size:0.9rem;color:var(--muted);margin-top:12px;text-align:center;font-weight:500}
-    a{color:var(--accent-1);text-decoration:none;font-weight:700;transition:all 0.3s}
-    a:hover{color:var(--accent-2)}
-
-    /* Notification styles */
-    #notify { position: fixed; right: 16px; top: 16px; z-index: 9999; pointer-events: none; }
-    #notify .note { pointer-events: auto; min-width:220px; max-width:420px; padding:14px 16px; border-radius:12px; color:#fff; box-shadow:0 12px 30px rgba(0,0,0,0.2); transform-origin:center; transform: perspective(600px) translateZ(0) rotateX(0); opacity:0; transition: transform 260ms cubic-bezier(.2,.9,.2,1), opacity 260ms; margin-top:10px; font-weight:700 }
-    #notify .note.show { opacity:1; transform: perspective(600px) translateZ(18px) rotateX(0deg) }
-    #notify .note.info { background: linear-gradient(135deg,#2563eb,#06b6d4) }
-    #notify .note.success { background: linear-gradient(135deg,#059669,#047857) }
-    #notify .note.error { background: linear-gradient(135deg,#dc2626,#b91c1c) }
-
-    @media (max-width:480px){ .card{padding:16px;margin:12px} body{padding:12px} }
+    :root{--bg:#07111f;--surface:rgba(15,23,42,0.96);--border:rgba(148,163,184,0.18);--text:#eff6ff;--muted:#cbd5e1;--primary:#38bdf8;--accent:#2563eb;--success:#22c55e;--error:#f87171;}
+    *{box-sizing:border-box;font-family:Segoe UI, Arial, sans-serif;}
+    body{margin:0;min-height:100vh;background:linear-gradient(135deg,#020617,#0f172a 35%,#1e293b 100%);color:var(--text);display:grid;place-items:center;padding:24px;}
+    .card{width:100%;max-width:460px;background:var(--surface);border:1px solid var(--border);border-radius:24px;padding:24px;box-shadow:0 18px 40px rgba(8,15,30,0.45);}
+    h1{margin:0 0 8px;font-size:1.7rem;}
+    p{color:var(--muted);line-height:1.4;}
+    .btn{display:block;width:100%;border:none;border-radius:12px;padding:12px 14px;font-weight:700;cursor:pointer;transition:.18s;}
+    .btn:hover{transform:translateY(-1px);} 
+    .btn-primary{background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;}
+    .btn-google{background:#fff;color:#111827;border:1px solid #dbe4ee;display:flex;align-items:center;justify-content:center;gap:10px;text-decoration:none;}
+    .field{display:grid;gap:6px;margin-top:12px;}
+    .field label{font-size:.92rem;color:var(--muted);font-weight:600;}
+    .field input{background:rgba(15,23,42,0.95);border:1px solid var(--border);border-radius:12px;padding:11px 12px;color:var(--text);font-size:1rem;}
+    .field input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(56,189,248,0.12);} 
+    .message{display:none;margin-top:12px;padding:10px 12px;border-radius:12px;font-weight:600;}
+    .message.error{display:block;background:rgba(248,113,113,0.12);color:#fecaca;border:1px solid rgba(248,113,113,0.25);} 
+    .message.success{display:block;background:rgba(34,197,94,0.12);color:#bbf7d0;border:1px solid rgba(34,197,94,0.25);} 
+    .small{font-size:.95rem;color:var(--muted);margin-top:10px;text-align:center;}
+    .link{color:var(--primary);text-decoration:none;font-weight:700;}
   </style>
 </head>
 <body>
-  <div class="video-shell" aria-hidden="true">
-    <iframe src="https://www.youtube.com/embed/U9N2h3GY7jU?autoplay=1&mute=1&controls=0&loop=1&playlist=U9N2h3GY7jU&rel=0&showinfo=0" allow="autoplay; encrypted-media"></iframe>
-    <div class="video-overlay"></div>
-  </div>
+  <main class="card">
+    <h1>Create your Water Billing account</h1>
+    <p>Register with email, or sign up with Google and start managing records in MongoDB.</p>
 
-  <div class="card">
-    <h1>Create your panel account</h1>
-    <p class="small" style="text-align:left">Sign up to manage your bot hosting panel and server pairs.</p>
-
-    <a href="/auth/google" class="btn-google">
-      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="G"> 
-      Sign up with Google
-    </a>
-
-    <div class="or"><div></div><span>or use email</span><div></div></div>
+    <a class="btn btn-google" href="/auth/google">G Continue with Google</a>
 
     <form id="signupForm">
-      <div class="row"><input type="text" id="name" placeholder="Full name" required></div>
-      <div class="row"><input type="email" id="email" placeholder="Email address" required></div>
-      <div class="row"><input type="tel" id="phone" placeholder="Phone (optional)" pattern="[0-9+\- ]{7,}" ></div>
-      <div class="row"><input type="password" id="password" placeholder="Password" required></div>
-      <button type="submit" class="primary">Create account</button>
+      <div class="field"><label for="name">Full name</label><input id="name" type="text" required placeholder="Your name"></div>
+      <div class="field"><label for="email">Email</label><input id="email" type="email" required placeholder="you@example.com"></div>
+      <div class="field"><label for="phone">Phone (optional)</label><input id="phone" type="tel" placeholder="0712345678"></div>
+      <div class="field"><label for="password">Password</label><input id="password" type="password" required placeholder="Minimum 6 characters"></div>
+      <div class="field"><button id="signupBtn" class="btn btn-primary" type="submit">Create account</button></div>
     </form>
 
-    <div class="small">Already have an account? <a href="login.html">Sign in</a></div>
-    <div class="small"><a href="index.html" style="color:var(--muted);font-weight:400">Return to home</a></div>
-  </div>
-
-  <div id="notify" aria-hidden="true"></div>
+    <div id="msg" class="message"></div>
+    <div class="small">Already have an account? <a class="link" href="login.html">Sign in</a></div>
+    <div class="small"><a class="link" href="index.html">Back to home</a></div>
+  </main>
 
   <script>
-    function showNotification(message, type = 'info', duration = 3000) {
-      let container = document.getElementById('notify');
-      const el = document.createElement('div'); el.className = 'note ' + type; el.innerHTML = '<div style="font-weight:700">' + message + '</div>';
-      container.appendChild(el);
-      requestAnimationFrame(() => el.classList.add('show'));
-      setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 300); }, duration);
-    }
+    const msg = document.getElementById('msg');
+    function showMsg(text, type='error') { msg.className='message ' + type; msg.textContent=text; }
 
     document.getElementById('signupForm').addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -91,41 +56,33 @@
       const email = document.getElementById('email').value.trim();
       const phone = document.getElementById('phone').value.trim();
       const password = document.getElementById('password').value;
+      const btn = document.getElementById('signupBtn');
 
-      try{
-        // Imebadilishwa kwenda /api/signup ili ifuate mtiririko sawa wa backend
-        const resp = await fetch('/api/signup', {
+      try {
+        btn.disabled = true;
+        btn.textContent = 'Creating account...';
+        const response = await fetch('/api/signup', {
           method: 'POST',
-          credentials: 'same-origin',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify({ name, email, phone, password })
         });
-        const data = await resp.json();
-        if (!resp.ok) {
-          showNotification(data.error || 'Sign up failed', 'error', 3500);
-          return;
-        }
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Signup failed');
 
-        if (data.user) {
-          localStorage.setItem('authToken', 'session_' + Date.now());
-          localStorage.setItem('user', JSON.stringify({
-            userId: data.user.id,
-            email: data.user.email,
-            name: data.user.name,
-            picture: ''
-          }));
-          localStorage.setItem('loginTime', new Date().toISOString());
-        }
+        localStorage.setItem('authToken', 'session_' + Date.now());
+        localStorage.setItem('user', JSON.stringify(data.user));
+        localStorage.setItem('loginTime', new Date().toISOString());
 
-        showNotification('Account created successfully! Redirecting...', 'success', 1400);
+        showMsg('Account created successfully. Redirecting...', 'success');
         setTimeout(() => {
-          const adminEmails = ['mickidadyhamza@gmail.com'];
-          const isAdmin = adminEmails.includes(data.user.email);
-          window.location.href = isAdmin ? '/admin.html' : '/botweb.html';
-        }, 900);
+          window.location.href = data.user.role === 'admin' ? '/admin.html' : '/records.html';
+        }, 800);
       } catch (err) {
-        console.error('Error:', err);
-        showNotification('Server Error — Account creation temporarily unavailable', 'error', 4000);
+        showMsg(err.message || 'Unable to create account', 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Create account';
       }
     });
   </script>

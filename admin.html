@@ -271,7 +271,7 @@
               <div style="font-size: 50px; margin-bottom: 10px;">🚫</div>
               <h1>Access Denied</h1>
               <p>Huna ruhusa ya kuingia kwenye ukurasa huu. Ukurasa huu ni maalum kwa ajili ya Msimamizi Mkuu (Admin) tu.</p>
-              <a href="login.html">Sign In kama Admin</a>
+              <a href="index.html">Rudi kwenye Home</a>
             </div>
           </body>
         `;
@@ -289,7 +289,6 @@
       <a href="index.html">Home</a>
       <a href="botweb.html">Dashboard</a>
       <a href="records.html">Records</a>
-      <a href="login.html">Login</a>
     </nav>
     <button onclick="logout()">Logout</button>
   </header>
@@ -454,10 +453,10 @@
       localStorage.removeItem('loginTime');
       try {
         await fetch('/api/logout', { method: 'POST', credentials: 'same-origin' });
-        window.location.href = 'login.html';
       } catch(err) {
-        window.location.href = 'login.html';
+        // no-op: login/signup system has been removed
       }
+      window.location.href = 'index.html';
     }
 
     window.onload = refreshStats;
