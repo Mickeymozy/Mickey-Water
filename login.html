@@ -8,9 +8,9 @@
   <style>
     :root{--bg-1:#1e3a8a;--bg-2:#2563eb;--bg-3:#06b6d4;--card-bg:rgba(255,255,255,0.98);--accent-1:#2563eb;--accent-2:#06b6d4;--muted:#475569;--text-primary:#0f172a;--success:#059669;--error:#dc2626}
     *{box-sizing:border-box}
-    
+
     html { scroll-behavior: smooth; }
-    
+
     body{
       font-family:'Poppins','Segoe UI',system-ui,Arial;
       margin:0;
@@ -65,12 +65,12 @@
       text-transform:uppercase;
       margin-bottom:10px;
     }
-    
+
     @keyframes fadeIn {
       from { opacity: 0; }
       to { opacity: 1; }
     }
-    
+
     .wrap{
       max-width:980px;
       width:100%;
@@ -81,31 +81,31 @@
       padding:0 12px;
       animation: slideUp 0.8s ease-out;
     }
-    
+
     @keyframes slideUp {
       from { transform: translateY(40px); opacity: 0; }
       to { transform: translateY(0); opacity: 1; }
     }
-    
+
     .hero{
       color:#fff;
       padding:32px;
       border-radius:12px;
       animation: slideInLeft 0.8s ease-out;
     }
-    
+
     @keyframes slideInLeft {
       from { transform: translateX(-40px); opacity: 0; }
       to { transform: translateX(0); opacity: 1; }
     }
-    
+
     .hero h1{
       font-weight:800;
       font-size:2.5rem;
       margin-bottom:1rem;
       line-height:1.2;
     }
-    
+
     .brand{
       display:flex;
       align-items:center;
@@ -113,17 +113,17 @@
       font-weight:800;
       font-size:1.2rem;
     }
-    
+
     .logo{
       font-size:42px;
       animation: bounce 2s infinite;
     }
-    
+
     @keyframes bounce {
       0%, 100% { transform: translateY(0); }
       50% { transform: translateY(-10px); }
     }
-    
+
     .card{
       background:var(--card-bg);
       padding:26px;
@@ -134,25 +134,25 @@
       animation-delay:0.1s;
       animation-fill-mode:both;
     }
-    
+
     @keyframes slideInRight {
       from { transform: translateX(40px); opacity: 0; }
       to { transform: translateX(0); opacity: 1; }
     }
-    
+
     .card h2{
       color:var(--text-primary);
       font-weight:800;
       font-size:1.5rem;
       margin:0;
     }
-    
+
     .small{
       font-size:0.95rem;
       color:var(--muted);
       font-weight:500;
     }
-    
+
     .btn-google{
       display:inline-flex;
       align-items:center;
@@ -170,44 +170,44 @@
       transition:all 0.3s;
       font-size:0.95rem;
     }
-    
+
     .btn-google:hover{
       transform:translateY(-2px);
       box-shadow:0 12px 32px rgba(37,99,235,0.4);
     }
-    
+
     .btn-google:active {
       transform:translateY(0);
     }
-    
+
     .btn-google img{
       height:20px;
       width:20px;
     }
-    
+
     .or{
       display:flex;
       align-items:center;
       gap:12px;
       margin:20px 0;
     }
-    
+
     .or div{
       flex:1;
       height:1px;
       background:#e2e8f0;
     }
-    
+
     .or span{
       font-size:12px;
       color:var(--muted);
       font-weight:600;
     }
-    
+
     .form-row{
       margin-bottom:14px;
     }
-    
+
     input{
       width:100%;
       padding:12px;
@@ -219,22 +219,22 @@
       transition:all 0.3s;
       font-weight:500;
     }
-    
+
     input:hover {
       border-color:#a1aecb;
     }
-    
+
     input:focus{
       outline:none;
       border-color:var(--accent-2);
       box-shadow:0 0 0 4px rgba(6,182,212,0.1);
       background:#f0f9ff;
     }
-    
+
     input::placeholder {
       color:#a1aecb;
     }
-    
+
     button.primary{
       padding:12px;
       border-radius:10px;
@@ -252,22 +252,22 @@
       position:relative;
       overflow:hidden;
     }
-    
+
     button.primary:hover{
       transform:translateY(-2px);
       box-shadow:0 12px 32px rgba(37,99,235,0.4);
     }
-    
+
     button.primary:active {
       transform:translateY(0);
     }
-    
+
     button.primary:disabled {
       opacity:0.6;
       cursor:not-allowed;
       transform:none;
     }
-    
+
     .loading-spinner {
       display:inline-block;
       width:14px;
@@ -278,11 +278,11 @@
       animation:spin 0.8s linear infinite;
       margin-right:8px;
     }
-    
+
     @keyframes spin {
       to { transform:rotate(360deg); }
     }
-    
+
     .link{
       display:block;
       text-align:center;
@@ -293,12 +293,12 @@
       font-size:0.95rem;
       transition:all 0.3s;
     }
-    
+
     .link:hover{
       color:var(--accent-2);
       text-decoration:underline;
     }
-    
+
     #errorBanner{
       font-weight:700;
       color:var(--error);
@@ -311,7 +311,7 @@
       display:none;
       animation:slideDown 0.3s ease-out;
     }
-    
+
     @keyframes slideDown {
       from { transform: translateY(-10px); opacity: 0; }
       to { transform: translateY(0); opacity: 1; }
@@ -325,7 +325,7 @@
       z-index: 9999;
       pointer-events: none;
     }
-    
+
     #notify .note {
       pointer-events: auto;
       min-width:220px;
@@ -341,20 +341,20 @@
       margin-top:10px;
       font-weight:700;
     }
-    
+
     #notify .note.show {
       opacity:1;
       transform: perspective(600px) translateZ(18px) rotateX(0deg);
     }
-    
+
     #notify .note.info {
       background: linear-gradient(135deg,#2563eb,#06b6d4);
     }
-    
+
     #notify .note.success {
       background: linear-gradient(135deg,#059669,#047857);
     }
-    
+
     #notify .note.error {
       background: linear-gradient(135deg,#dc2626,#b91c1c);
     }
@@ -364,48 +364,18 @@
       .hero{padding:20px;}
       .hero h1{font-size:2rem;}
     }
-    
+
     @media (max-width:420px){
       .hero{padding:16px}
       .card{padding:18px}
       .hero h1{font-size:1.6rem}
       .wrap { padding: 0 8px; }
     }
-
-    /* Footer */
-    footer {
-      background: #0f172a;
-      color: #cbd5e1;
-      padding: 1rem;
-      text-align: center;
-      border-top: 1px solid #2563eb;
-      margin-top: 2rem;
-    }
-    
-    footer a {
-      color: #cbd5e1;
-      text-decoration: none;
-      transition: color 0.3s;
-      margin: 0 1rem;
-      font-size: 0.9rem;
-    }
-    
-    footer a:hover {
-      color: #06b6d4;
-    }
   </style>
 </head>
 <body>
-  <footer style="position: fixed; bottom: 0; left: 0; right: 0; z-index: 1000;">
-    <div style="display: flex; justify-content: space-around; max-width: 1000px; margin: 0 auto; flex-wrap: wrap;">
-      <a href="index.html">Home</a>
-      <a href="botweb.html">Dashboard</a>
-      <a href="signup.html">Register</a>
-      <a href="botweb.html">Support</a>
-    </div>
-  </footer>
 
-  <div class="wrap" style="padding-bottom: 120px;">
+  <div class="wrap">
     <div class="video-shell" aria-hidden="true">
       <iframe src="https://www.youtube.com/embed/U9N2h3GY7jU?autoplay=1&mute=1&controls=0&loop=1&playlist=U9N2h3GY7jU&rel=0&showinfo=0" allow="autoplay; encrypted-media" allowFullScreen></iframe>
       <div class="video-overlay"></div>
@@ -441,12 +411,11 @@
 
   <div id="notify" aria-hidden="true"></div>
 
-  <!-- Forgot Password Modal -->
-  <div id="forgotPasswordModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 10000; display: flex; align-items: center; justify-content: center;">
+  <div id="forgotPasswordModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 10000; align-items: center; justify-content: center;">
     <div class="card" style="max-width: 400px; width: 90%; margin: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
       <h2 style="margin: 0 0 12px; font-size: 1.3rem;">Reset Password</h2>
       <p class="small">Enter your email address and we'll send you a password reset link and notify the admin.</p>
-      
+
       <form id="forgotPasswordForm" style="margin-top: 20px;">
         <div class="form-row">
           <input type="email" id="forgotEmail" placeholder="your@example.com" required>
@@ -454,13 +423,14 @@
         <button class="primary" type="submit" id="resetBtn" style="margin-bottom: 12px;">Send Reset Link</button>
         <button class="primary" type="button" onclick="closeForgotPasswordModal()" style="background: #6b7280; margin-bottom: 0;">Cancel</button>
       </form>
-      
+
       <div id="resetMessage" style="margin-top: 12px; padding: 10px; border-radius: 8px; display: none;"></div>
     </div>
   </div>
 
   <script>
     function openForgotPasswordModal() {
+      // Inabadilisha display kutoka none kwenda flex ili ionekane mtumiaji akiklik
       document.getElementById('forgotPasswordModal').style.display = 'flex';
     }
 
@@ -557,8 +527,7 @@
       const btn = document.getElementById('signInBtn');
       const email = document.getElementById('signin-email').value.trim();
       const password = document.getElementById('signin-pass').value;
-      
-      // Validate input
+
       if (!email || !password) {
         showError('Please enter email and password');
         return;
@@ -568,15 +537,14 @@
         showError('Password must be at least 6 characters');
         return;
       }
-      
+
       try{
         btn.disabled = true;
         btn.innerHTML = '<span class="loading-spinner"></span>Signing in...';
-        
-        // Set up timeout with AbortController
+
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000);
-        
+
         const resp = await fetch('/api/login', {
           method: 'POST',
           credentials: 'same-origin',
@@ -584,9 +552,9 @@
           body: JSON.stringify({ email, password }),
           signal: controller.signal
         });
-        
+
         clearTimeout(timeoutId);
-        
+
         const data = await resp.json();
         if (!resp.ok) {
           showError(data.error || 'Sign in failed');
@@ -594,16 +562,14 @@
           btn.textContent = 'Sign in';
           return;
         }
-        
-        // Get user data after successful login
+
         const meResp = await fetch('/api/me', {
           method: 'GET',
           credentials: 'same-origin'
         });
         const meData = await meResp.json();
-        
+
         if (meResp.ok && meData.user) {
-          // Store authentication data
           localStorage.setItem('authToken', 'session_' + Date.now());
           localStorage.setItem('user', JSON.stringify({
             userId: meData.user.id,
@@ -612,9 +578,8 @@
             picture: meData.user.picture || ''
           }));
           localStorage.setItem('loginTime', new Date().toISOString());
-          
+
           showNotification('✅ Signed in successfully', 'success', 1200);
-          // Redirect to appropriate page
           setTimeout(() => { 
             const adminEmails = ['mickidadyhamza@gmail.com'];
             const isAdmin = adminEmails.includes(meData.user.email);
