@@ -98,7 +98,7 @@ app.use(session({
   resave: true,
   saveUninitialized: true,
   cookie: { 
-    secure: process.env.NODE_ENV === 'production', // Itakuwa true kama ipo Render (Inalindwa na proxy trust yetu)
+    secure: process.env.NODE_ENV === 'production', 
     httpOnly: true,
     maxAge: 7 * 24 * 60 * 60 * 1000,
     sameSite: 'lax'
@@ -205,12 +205,11 @@ passport.use('local', new LocalStrategy({
   }
 }));
 
-// Google Strategy (MABADILIKO YAMEFANYIKA HAPA KWA AJILI YA REDIRECT URI)
 passport.use('google', new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID || 'not-configured',
   clientSecret: process.env.GOOGLE_CLIENT_SECRET || 'not-configured',
   callbackURL: process.env.GOOGLE_CALLBACK_URL || 'https://mickey-glitch.onrender.com/auth/google/callback',
-  proxy: true // Hii inalazimisha strategy kuheshimu https itifaki kutoka kwenye Render proxy
+  proxy: true 
 }, async (accessToken, refreshToken, profile, done) => {
   try {
     if (!profile.id) {
@@ -229,7 +228,6 @@ passport.use('google', new GoogleStrategy({
     if (!user) {
       const existingByEmail = await User.findOne({ email: email.toLowerCase() });
       if (existingByEmail) {
-        console.log('ℹ️  Google OAuth: Linking Google ID to existing email');
         existingByEmail.googleId = profile.id;
         existingByEmail.picture = profile.photos?.[0]?.value || existingByEmail.picture;
         existingByEmail.lastLogin = new Date();
@@ -246,13 +244,11 @@ passport.use('google', new GoogleStrategy({
         provider: 'google',
         lastLogin: new Date()
       });
-      console.log('✅ Google OAuth: New user created:', email);
       await user.save();
     } else {
       user.lastLogin = new Date();
       user.picture = profile.photos?.[0]?.value || user.picture;
       await user.save();
-      console.log('✅ Google OAuth: Existing user logged in:', email);
     }
 
     return done(null, user);
@@ -339,7 +335,7 @@ app.delete('/api/users/:id', protect, async (req, res) => {
   try {
     if (!isAdmin(req.user)) return res.status(403).json({ error: 'Unauthorized' });
     const user = await User.findByIdAndDelete(req.params.id);
-    if (user) await Record.deleteMany({ userId: user.id });
+    if (user) await Record.deleteMany({ userId: user._id });
     res.json({ success: true, message: 'User deleted' });
   } catch (err) {
     res.status(500).json({ error: 'Failed to delete user' });
@@ -436,7 +432,6 @@ app.get('/api/password-reset-requests', protect, async (req, res) => {
 app.post('/api/send-notification', protect, async (req, res) => {
   try {
     if (!isAdmin(req.user)) return res.status(403).json({ error: 'Unauthorized' });
-    const { title, body, url } = req.body;
     res.json({ success: true, message: 'Notification logged' });
   } catch (err) {
     res.status(500).json({ error: 'Error' });
@@ -572,7 +567,7 @@ app.post('/signup', async (req, res) => {
 const handleLocalLogin = (req, res, next) => {
   passport.authenticate('local', (err, user, info) => {
     if (err) return res.status(500).json({ error: 'Login error' });
-    if (!user) return res.status(401).json({ error: 'Invalid email or password. Try demo@waterbilling.com / Demo123! if the database is offline.' });
+    if (!user) return res.status(401).json({ error: 'Invalid email or password.' });
 
     req.login(user, async (loginErr) => {
       if (loginErr) return res.status(500).json({ error: 'Session error' });
@@ -589,8 +584,7 @@ const handleLocalLogin = (req, res, next) => {
           name: user.name,
           role: user.role || 'user',
           provider: user.provider || 'local'
-        },
-        note: 'Offline fallback enabled when the MongoDB service is unavailable.'
+        }
       });
     });
   })(req, res, next);
@@ -621,28 +615,34 @@ app.get('/logout', (req, res, next) => {
 
 // ================== AI/CHAT API ==================
 app.get('/api/chat', async (req, res) => {
-  const { text } = req.query;
   res.json({ reply: "Service Active", confidence: "high" });
 });
 
-// ================== SAVE RECORD ==================
+// ================== SAVE & GET RECORD (FIXED CACHE & USER ID SHIDA) ==================
+let recordCache = {}; // Imebadilishwa kuwa let
+const CACHE_DURATION = 5 * 60 * 1000;
+
 app.post('/save-record', protect, async (req, res) => {
   try {
     const { curr, prev, name, phone, rate, fixed } = req.body;
     const usage = curr - prev;
     const total = (usage * (rate || 2000)) + (fixed || 0);
 
-    const record = new Record({ userId: req.user.id, name, phone, prev, curr, usage, total });
+    // FIX: Tumia req.user._id badala ya id
+    const userId = req.user._id || req.user.id;
+
+    const record = new Record({ userId: String(userId), name, phone, prev, curr, usage, total });
     await record.save();
-    delete recordCache[req.user.id];
+    
+    if (recordCache[String(userId)]) {
+      delete recordCache[String(userId)];
+    }
+    
     res.json({ success: true, record });
   } catch (e) {
     res.status(500).json({ error: "Err" });
   }
 });
-
-const recordCache = {};
-const CACHE_DURATION = 5 * 60 * 1000;
 
 app.get('/get-records', protect, async (req, res) => {
   try {
@@ -651,8 +651,13 @@ app.get('/get-records', protect, async (req, res) => {
     const limit = Math.min(50, parseInt(req.query.limit) || 20);
     const skip = (page - 1) * limit;
 
-    if (!isAdminUser && recordCache[req.user.id]) return res.json(recordCache[req.user.id]);
-    const query = isAdminUser ? {} : { userId: req.user.id };
+    const userId = req.user._id || req.user.id;
+
+    if (!isAdminUser && recordCache[String(userId)]) {
+       return res.json(recordCache[String(userId)]);
+    }
+    
+    const query = isAdminUser ? {} : { userId: String(userId) };
 
     const [records, total] = await Promise.all([
       Record.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).lean().exec(),
@@ -660,9 +665,12 @@ app.get('/get-records', protect, async (req, res) => {
     ]);
 
     const response = { success: true, records, pagination: { page, limit, total, pages: Math.ceil(total / limit) } };
+    
     if (!isAdminUser) {
-      recordCache[req.user.id] = response;
-      setTimeout(() => { delete recordCache[req.user.id]; }, CACHE_DURATION);
+      recordCache[String(userId)] = response;
+      setTimeout(() => { 
+        if(recordCache[String(userId)]) delete recordCache[String(userId)]; 
+      }, CACHE_DURATION);
     }
     res.json(response);
   } catch (e) {
@@ -685,7 +693,6 @@ app.get('/botweb.html', (req, res) => res.sendFile(path.join(__dirname, 'botweb.
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
-// Analytics routes... (zimebaki salama kama zilivyokuwa)
 app.post('/api/stream/analytics/event', async (req, res) => {
   try {
     const { sessionId, timestamp, event, channel, category, userId, userEmail, severity, ...data } = req.body;
@@ -695,8 +702,8 @@ app.post('/api/stream/analytics/event', async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Err' }); }
 });
 
-// Error handlers...
 app.use((err, req, res, next) => {
+  console.error("Server Error:", err.message);
   res.status(err.status || 500).json({ error: 'Internal error' });
 });
 app.use((req, res) => res.status(404).json({ error: 'Not found' }));
