@@ -13,6 +13,20 @@ const cors = require('cors');
 
 const app = express();
 
+const fallbackUsers = new Map();
+
+const demoPasswordHash = bcrypt.hashSync('Demo123!', 10);
+fallbackUsers.set('demo@waterbilling.com', {
+  id: 'demo_user_123',
+  name: 'Demo Account',
+  email: 'demo@waterbilling.com',
+  phone: '',
+  passwordHash: demoPasswordHash,
+  role: 'user',
+  picture: '',
+  createdAt: new Date()
+});
+
 // ================== 1. SMART DYNAMIC CORS (Kuondoa kabisa Network Error) ==================
 app.use(cors({
   origin: function (origin, callback) {
@@ -105,11 +119,18 @@ app.use(express.static(path.join(__dirname))); // Inasoma mafile yote yaliyopo k
 
 app.set('trust proxy', 1);
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 app.use(session({
   secret: process.env.SESSION_SECRET || 'gynitsmgxpcpdzot_mickey_secret_key',
   resave: false,
   saveUninitialized: false,
-  cookie: { secure: true, httpOnly: true, maxAge: 24 * 60 * 60 * 1000, sameSite: 'none' }
+  cookie: {
+    secure: isProduction,
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000,
+    sameSite: isProduction ? 'none' : 'lax'
+  }
 }));
 
 app.use(passport.initialize());
@@ -128,15 +149,30 @@ const User = mongoose.model('User', userSchema);
 // Passport configuration
 passport.use(new LocalStrategy({ usernameField: 'email' }, async (email, password, done) => {
   try {
-    if (!isMongoConnected) return done(null, false, { message: 'Database ipo offline. Tafadhali jaribu tena baada ya sekunde chache.' });
-    const user = await User.findOne({ email: email.toLowerCase() });
+    const normalizedEmail = String(email || '').toLowerCase().trim();
+    const fallbackUser = fallbackUsers.get(normalizedEmail);
+
+    if (!isMongoConnected) {
+      if (fallbackUser) {
+        const match = await bcrypt.compare(password, fallbackUser.passwordHash);
+        if (!match) return done(null, false, { message: 'Nenosiri uliloingiza si sahihi.' });
+
+        return done(null, { ...fallbackUser, _id: fallbackUser.id });
+      }
+
+      return done(null, false, { message: 'Database ipo offline. Tafadhali jaribu tena baada ya sekunde chache.' });
+    }
+
+    const user = await User.findOne({ email: normalizedEmail });
     if (!user) return done(null, false, { message: 'Akaunti yenye barua pepe hii haipo kwenye mfumo yetu.' });
-    
+
     const match = await bcrypt.compare(password, user.passwordHash);
     if (!match) return done(null, false, { message: 'Nenosiri uliloingiza si sahihi.' });
-    
+
     return done(null, user);
-  } catch (e) { return done(e); }
+  } catch (e) {
+    return done(e);
+  }
 }));
 
 passport.serializeUser((user, done) => done(null, user.id));
@@ -154,6 +190,77 @@ app.get('/:page.html', (req, res, next) => {
       res.redirect('/');
     }
   });
+});
+
+app.get('/api/me', (req, res) => {
+  if (!req.isAuthenticated || !req.isAuthenticated()) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  const user = req.user || {};
+  return res.json({
+    user: {
+      id: user._id ? user._id.toString() : user.id,
+      email: user.email,
+      name: user.name,
+      picture: user.picture || '',
+      role: user.role || 'user'
+    }
+  });
+});
+
+app.post('/api/signup', async (req, res) => {
+  try {
+    const name = String(req.body?.name || '').trim();
+    const email = String(req.body?.email || '').toLowerCase().trim();
+    const phone = String(req.body?.phone || '').trim();
+    const password = String(req.body?.password || '');
+
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: 'Jina, barua pepe, na nenosiri vinahitajika.' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Nenosiri lazima liwe na angalau herufi 6.' });
+    }
+
+    if (isMongoConnected) {
+      const existing = await User.findOne({ email });
+      if (existing) {
+        return res.status(409).json({ error: 'Akaunti tayari ipo kwenye mfumo.' });
+      }
+
+      const passwordHash = await bcrypt.hash(password, 10);
+      const user = await User.create({ name, email, phone, passwordHash });
+
+      return res.json({
+        success: true,
+        user: { id: user._id.toString(), name: user.name, email: user.email, role: 'user' }
+      });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    const userId = `offline_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    fallbackUsers.set(email, {
+      id: userId,
+      name,
+      email,
+      phone,
+      passwordHash,
+      role: 'user',
+      picture: '',
+      createdAt: new Date()
+    });
+
+    return res.json({
+      success: true,
+      user: { id: userId, name, email, role: 'user' },
+      note: 'Database is currently unavailable; the account was saved in temporary offline memory.'
+    });
+  } catch (error) {
+    console.error('Signup error:', error);
+    return res.status(500).json({ error: 'Imeshindwa kuunda akaunti. Tafadhali jaribu tena.' });
+  }
 });
 
 // ================== 7. LOGIN WITH AUTOMATIC EMAIL ERROR LOGGING ==================
@@ -192,7 +299,15 @@ app.post('/api/login', (req, res, next) => {
 
     req.login(user, (loginErr) => {
       if (loginErr) return res.status(500).json({ error: 'Imeshindwa kutengeneza Session.' });
-      return res.json({ success: true, user: { name: user.name, email: user.email } });
+      return res.json({
+        success: true,
+        user: {
+          id: user._id ? user._id.toString() : user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role || 'user'
+        }
+      });
     });
   })(req, res, next);
 });
@@ -219,6 +334,11 @@ process.on('unhandledRejection', (reason, promise) => {
 
 // Kuanzisha Server
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`🚀 Automatic Self-Healing Server Active on Port ${PORT}`);
-});
+
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`🚀 Automatic Self-Healing Server Active on Port ${PORT}`);
+  });
+}
+
+module.exports = app;

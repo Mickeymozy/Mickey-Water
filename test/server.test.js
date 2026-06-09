@@ -37,3 +37,32 @@ test('offline fallback login accepts the demo user', async () => {
     delete require.cache[require.resolve('../server')];
   }
 });
+
+test('signup endpoint accepts a new account even when the database is unavailable', async () => {
+  let server;
+
+  try {
+    server = await startServer();
+    const response = await fetch('http://127.0.0.1:3101/api/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Regression User',
+        email: 'regression@example.com',
+        phone: '255700000000',
+        password: 'StrongPass123!'
+      })
+    });
+
+    assert.equal(response.status, 200, 'signup should be available even when MongoDB is unavailable');
+
+    const data = await response.json();
+    assert.equal(data.success, true);
+    assert.equal(data.user.email, 'regression@example.com');
+  } finally {
+    if (server) server.close();
+    if (ORIGINAL_PORT === undefined) delete process.env.PORT;
+    else process.env.PORT = ORIGINAL_PORT;
+    delete require.cache[require.resolve('../server')];
+  }
+});
