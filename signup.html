@@ -93,7 +93,8 @@
       const password = document.getElementById('password').value;
 
       try{
-        const resp = await fetch('/signup', {
+        // Imebadilishwa kwenda /api/signup ili ifuate mtiririko sawa wa backend
+        const resp = await fetch('/api/signup', {
           method: 'POST',
           credentials: 'same-origin',
           headers: { 'Content-Type': 'application/json' },
@@ -124,7 +125,7 @@
         }, 900);
       } catch (err) {
         console.error('Error:', err);
-        showNotification('Network error — please try again', 'error', 3000);
+        showNotification('Server Error — Account creation temporarily unavailable', 'error', 4000);
       }
     });
   </script>
