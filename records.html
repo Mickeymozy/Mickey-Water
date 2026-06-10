@@ -1,373 +1,488 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="sw">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Water Billing — Local JSON Manager</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <style>
-    :root {
-      color-scheme: dark;
-      color: #f1f5f9;
-      background: #020617;
-      accent-color: #38bdf8;
-      --success: #10b981;
-      --warning: #f59e0b;
-      --error: #ef4444;
-      --card-bg: rgba(15, 23, 42, 0.7);
-      --border-color: rgba(255, 255, 255, 0.06);
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mfumo wa Bili ya Maji - SMS</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    
-    body {
-      min-height: 100vh;
-      font-family: 'Segoe UI', system-ui, sans-serif;
-      padding: 30px 20px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      background: #020617;
-    }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
 
-    .bg-overlay {
-      position: fixed;
-      inset: 0;
-      background: radial-gradient(circle at top right, rgba(56, 189, 248, 0.08) 0%, transparent 50%),
-                  radial-gradient(circle at bottom left, rgba(37, 99, 235, 0.05) 0%, transparent 50%);
-      z-index: -1;
-    }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
 
-    .nav-header {
-      width: min(950px, 100%);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 25px;
-    }
+        .header {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
 
-    .btn-back {
-      color: #94a3b8;
-      text-decoration: none;
-      font-size: 0.95rem;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .btn-back:hover { color: #38bdf8; }
+        .header h1 {
+            font-size: 1.8rem;
+            margin-bottom: 10px;
+        }
 
-    .manager-card {
-      width: min(950px, 100%);
-      background: var(--card-bg);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border: 1px solid var(--border-color);
-      border-radius: 24px;
-      box-shadow: 0 40px 60px rgba(0, 0, 0, 0.5);
-      overflow: hidden;
-    }
+        .header p {
+            opacity: 0.9;
+            font-size: 0.9rem;
+        }
 
-    .tabs-header {
-      display: flex;
-      background: rgba(2, 6, 23, 0.4);
-      border-bottom: 1px solid var(--border-color);
-    }
+        .form-section {
+            padding: 30px;
+        }
 
-    .tab-btn {
-      flex: 1;
-      padding: 18px;
-      background: transparent;
-      border: none;
-      color: #94a3b8;
-      font-size: 1rem;
-      font-weight: 700;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      transition: all 0.2s ease;
-    }
+        .form-group {
+            margin-bottom: 20px;
+        }
 
-    .tab-btn:hover { color: #f8fafc; background: rgba(255,255,255,0.01); }
-    .tab-btn.active {
-      color: #38bdf8;
-      background: rgba(15, 23, 42, 0.5);
-      border-bottom: 3px solid #38bdf8;
-    }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+            font-size: 0.9rem;
+        }
 
-    .tab-content { padding: 35px; display: none; }
-    .tab-content.active { display: block; }
+        input, select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
 
-    .form-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 20px;
-      margin-bottom: 25px;
-    }
-    @media (max-width: 650px) { .form-grid { grid-template-columns: 1fr; } }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
 
-    .input-wrapper { display: flex; flex-direction: column; gap: 8px; }
-    .input-wrapper label { font-size: 0.85rem; color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;}
-    
-    input, select {
-      padding: 14px;
-      border-radius: 12px;
-      border: 1px solid rgba(255,255,255,0.08);
-      background: rgba(2, 6, 23, 0.4);
-      color: white;
-      font-size: 0.95rem;
-      outline: none;
-    }
-    input:focus, select:focus { border-color: #38bdf8; background: rgba(2, 6, 23, 0.6); }
+        .preview-box {
+            background: #f0f4ff;
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+            border-left: 4px solid #667eea;
+        }
 
-    .calc-preview-bar {
-      background: rgba(56, 189, 248, 0.05);
-      border: 1px solid rgba(56, 189, 248, 0.15);
-      padding: 18px;
-      border-radius: 14px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 25px;
-    }
+        .preview-box h3 {
+            color: #1e3c72;
+            margin-bottom: 15px;
+            font-size: 1rem;
+        }
 
-    .btn-action {
-      width: 100%;
-      padding: 16px;
-      border-radius: 14px;
-      font-weight: 700;
-      font-size: 1rem;
-      cursor: pointer;
-      border: none;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      background: linear-gradient(135deg, #2563eb 0%, #06b6d4 100%);
-      color: white;
-    }
-    .btn-action:hover { filter: brightness(1.1); transform: translateY(-1px); }
+        .sms-preview {
+            background: #2d2d2d;
+            color: #0f0;
+            padding: 15px;
+            border-radius: 10px;
+            font-family: monospace;
+            font-size: 0.85rem;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
 
-    .table-container { overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; text-align: left; }
-    th, td { padding: 16px; border-bottom: 1px solid rgba(255,255,255,0.05); }
-    th { background: rgba(2, 6, 23, 0.3); color: #38bdf8; font-size: 0.9rem; text-transform: uppercase; }
-    tr:hover { background: rgba(255,255,255,0.01); }
+        .btn-send {
+            width: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
 
-    .badge { padding: 4px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: 700; }
-    .badge.paid { background: rgba(16, 185, 129, 0.1); color: #34d399; }
-    .badge.pending { background: rgba(245, 158, 11, 0.1); color: #fbbf24; }
+        .btn-send:hover {
+            transform: translateY(-2px);
+        }
 
-    .btn-delete {
-      background: rgba(239, 68, 68, 0.1);
-      color: #f87171;
-      border: 1px solid rgba(239, 68, 68, 0.15);
-      padding: 6px 12px;
-      border-radius: 8px;
-      cursor: pointer;
-    }
-    .btn-delete:hover { background: #ef4444; color: white; }
-  </style>
+        .records-section {
+            padding: 0 30px 30px 30px;
+        }
+
+        .records-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .record-item {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-left: 3px solid #667eea;
+        }
+
+        .record-item .name {
+            font-weight: bold;
+            color: #1e3c72;
+        }
+
+        .record-item .details {
+            font-size: 0.85rem;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .delete-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            margin-top: 8px;
+        }
+
+        .tab-buttons {
+            display: flex;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 15px;
+            background: none;
+            border: none;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .tab-btn.active {
+            color: #667eea;
+            border-bottom: 3px solid #667eea;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+    </style>
 </head>
 <body>
-
-  <div class="bg-overlay" aria-hidden="true"></div>
-
-  <div class="nav-header">
-    <a href="index.html" class="btn-back"><i class="fa-solid fa-arrow-left"></i> Home Hub</a>
-    <h2 style="font-weight: 800; letter-spacing: -0.5px;">Water Invoice Panel</h2>
-  </div>
-
-  <div class="manager-card">
-    
-    <div class="tabs-header">
-      <button class="tab-btn active" onclick="switchTab(event, 'tab-create')">
-        <i class="fa-solid fa-file-invoice-dollar"></i> Create New Invoice & SMS
-      </button>
-      <button class="tab-btn" onclick="switchTab(event, 'tab-view'); fetchLocalRecords();">
-        <i class="fa-solid fa-database"></i> View JSON Stored Records
-      </button>
-    </div>
-
-    <div id="tab-create" class="tab-content active">
-      <form id="waterForm" onsubmit="saveWaterInvoice(event)">
-        <div class="form-grid">
-          <div class="input-wrapper">
-            <label>Jina la Mteja</label>
-            <input type="text" id="wName" placeholder="Mfa. Juma Hamisi" required>
-          </div>
-          <div class="input-wrapper">
-            <label>Namba ya Simu</label>
-            <input type="tel" id="wPhone" placeholder="Mfa. 0712345678" required>
-          </div>
-          <div class="input-wrapper">
-            <label>Unit za Mwanzo (Previous Reading)</label>
-            <input type="number" id="wPrev" value="0" min="0" oninput="calculateUnitsUsed()" required>
-          </div>
-          <div class="input-wrapper">
-            <label>Unit za Sasa (Current Reading)</label>
-            <input type="number" id="wCurr" value="0" min="0" oninput="calculateUnitsUsed()" required>
-          </div>
-          <div class="input-wrapper">
-            <label>Gharama kwa kila Unit (TZS)</label>
-            <input type="number" id="wPrice" value="2000" min="0" oninput="calculateUnitsUsed()" required>
-          </div>
-          <div class="input-wrapper">
-            <label>Hali ya Ankara (Status)</label>
-            <select id="wStatus">
-              <option value="Pending">Inasubiri (Pending)</option>
-              <option value="Paid">Imelipwa (Paid)</option>
-            </select>
-          </div>
+    <div class="container">
+        <div class="header">
+            <h1>💧 Mfumo wa Bili ya Maji</h1>
+            <p>Undaa ankara na utume SMS kwa mteja</p>
         </div>
 
-        <div class="calc-preview-bar">
-          <div>
-            <span style="color:#94a3b8; font-size:0.85rem; font-weight:700; display:block; text-transform:uppercase;">Unit Zilizotumika</span>
-            <span id="lblUnits" style="font-size:1.4rem; font-weight:800; color:#38bdf8;">0 Units</span>
-          </div>
-          <div style="text-align: right;">
-            <span style="color:#94a3b8; font-size:0.85rem; font-weight:700; display:block; text-transform:uppercase;">Jumla ya Gharama</span>
-            <span id="lblTotal" style="font-size:1.4rem; font-weight:800; color:#10b981;">0 TZS</span>
-          </div>
+        <div class="tab-buttons">
+            <button class="tab-btn active" onclick="switchTab('form')">➕ Unda Ankara</button>
+            <button class="tab-btn" onclick="switchTab('records')">📋 Rekodi Zilizohifadhiwa</button>
         </div>
 
-        <button type="submit" class="btn-action">
-          <i class="fa-solid fa-square-plus"></i> Hifadhi Kwenye JSON & Tuma SMS
-        </button>
-      </form>
+        <!-- Form Tab -->
+        <div id="formTab" class="tab-content active">
+            <div class="form-section">
+                <form id="billForm">
+                    <div class="form-group">
+                        <label>👤 Jina la Mteja</label>
+                        <input type="text" id="customerName" placeholder="Mfano: Mickdady" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>📱 Namba ya Simu</label>
+                        <input type="tel" id="phoneNumber" placeholder="Mfano: 0712345678" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>📊 Usomaji wa Nyuma (Units)</label>
+                        <input type="number" id="prevReading" step="0.1" value="25" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>📊 Usomaji wa Sasa (Units)</label>
+                        <input type="number" id="currReading" step="0.1" value="30" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>💰 Gharama kwa Unit (TZS)</label>
+                        <input type="number" id="pricePerUnit" value="2000" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>📌 Hali ya Malipo</label>
+                        <select id="status">
+                            <option value="Haijalipwa">⏳ Haijalipwa</option>
+                            <option value="Imelipwa">✅ Imelipwa</option>
+                        </select>
+                    </div>
+
+                    <div class="preview-box">
+                        <h3>📱 SMS Itakayotumwa:</h3>
+                        <div class="sms-preview" id="smsPreview">
+                            Ndugu Mickdady,
+
+Bili yako ya maji tarehe 06/06/2026:
+✓ Usomaji wa Nyuma: 25.0 Units
+✓ Usomaji wa Sasa: 30.0 Units
+✓ Matumizi Halisi: 5.0 Units
+✓ Jumla ya Bili: TZS 10,000
+
+Asante kwa ushirikiano wako.
+Water Billing System
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-send">
+                        📤 Hifadhi & Tuma SMS
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Records Tab -->
+        <div id="recordsTab" class="tab-content">
+            <div class="records-section">
+                <h3 style="margin-bottom: 15px;">📋 Rekodi Zilizohifadhiwa</h3>
+                <div id="recordsList" class="records-list">
+                    <p style="text-align: center; color: #999;">Hakuna rekodi bado</p>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <div id="tab-view" class="tab-content">
-      <div class="table-container">
-        <table>
-          <thead>
-            <tr>
-              <th>Mteja</th>
-              <th>Simu</th>
-              <th>Vipimo (Readings)</th>
-              <th>Unit Zilizotumika</th>
-              <th>Jumla (TZS)</th>
-              <th>Hali</th>
-              <th>Kitendo</th>
-            </tr>
-          </thead>
-          <tbody id="jsonTableBody">
-            <tr><td colspan="7" style="text-align:center; color:#64748b; padding:30px;">Hakuna data.</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
+    <script>
+        // Kuhifadhi na kupata rekodi kwenye Local Storage
+        function getRecords() {
+            const records = localStorage.getItem('water_bills');
+            return records ? JSON.parse(records) : [];
+        }
 
-  </div>
+        function saveRecord(record) {
+            const records = getRecords();
+            records.push(record);
+            localStorage.setItem('water_bills', JSON.stringify(records));
+        }
 
-  <script>
-    function switchTab(event, tabId) {
-      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      document.getElementById(tabId).classList.add('active');
-      event.currentTarget.classList.add('active');
-    }
+        function deleteRecord(index) {
+            const records = getRecords();
+            records.splice(index, 1);
+            localStorage.setItem('water_bills', JSON.stringify(records));
+            displayRecords();
+        }
 
-    function calculateUnitsUsed() {
-      const prev = Number(document.getElementById('wPrev').value) || 0;
-      const curr = Number(document.getElementById('wCurr').value) || 0;
-      const price = Number(document.getElementById('wPrice').value) || 0;
+        // Kutengeneza SMS
+        function generateSMS(name, prev, curr, units, total, status) {
+            const today = new Date();
+            const dateStr = today.toLocaleDateString('sw-TZ');
+            
+            return `Ndugu ${name},
 
-      let unitsUsed = curr - prev;
-      if (unitsUsed < 0) unitsUsed = 0;
+Bili yako ya maji tarehe ${dateStr}:
+✓ Usomaji wa Nyuma: ${prev} Units
+✓ Usomaji wa Sasa: ${curr} Units
+✓ Matumizi Halisi: ${units} Units
+✓ Jumla ya Bili: TZS ${total.toLocaleString()}
+✓ Hali: ${status}
 
-      const totalBill = unitsUsed * price;
-      document.getElementById('lblUnits').innerText = `${unitsUsed.toLocaleString()} Units`;
-      document.getElementById('lblTotal').innerText = `${totalBill.toLocaleString()} TZS`;
-    }
+Asante kwa ushirikiano wako.
+Water Billing System`;
+        }
 
-    // ================= PURE LOCAL JSON ENGINE =================
-    function getRecordsFromStorage() {
-      const stored = localStorage.getItem('water_billing_records');
-      return stored ? JSON.parse(stored) : [];
-    }
+        // Kukokotoa matumizi na jumla
+        function calculateBill() {
+            const prev = parseFloat(document.getElementById('prevReading').value) || 0;
+            const curr = parseFloat(document.getElementById('currReading').value) || 0;
+            const price = parseFloat(document.getElementById('pricePerUnit').value) || 0;
+            
+            let units = curr - prev;
+            if (units < 0) units = 0;
+            const total = units * price;
+            
+            return { units, total };
+        }
 
-    function saveWaterInvoice(event) {
-      event.preventDefault();
+        // Update SMS preview
+        function updateSMSPreview() {
+            const name = document.getElementById('customerName').value || 'Mteja';
+            const prev = parseFloat(document.getElementById('prevReading').value) || 0;
+            const curr = parseFloat(document.getElementById('currReading').value) || 0;
+            const price = parseFloat(document.getElementById('pricePerUnit').value) || 0;
+            const statusSelect = document.getElementById('status');
+            const status = statusSelect.options[statusSelect.selectedIndex]?.text || 'Haijalipwa';
+            
+            let units = curr - prev;
+            if (units < 0) units = 0;
+            const total = units * price;
+            
+            const sms = generateSMS(name, prev, curr, units, total, status);
+            document.getElementById('smsPreview').innerText = sms;
+        }
 
-      const name = document.getElementById('wName').value;
-      const phone = document.getElementById('wPhone').value;
-      const prev = Number(document.getElementById('wPrev').value);
-      const curr = Number(document.getElementById('wCurr').value);
-      const price = Number(document.getElementById('wPrice').value);
-      const status = document.getElementById('wStatus').value;
+        // Kutuma SMS (kufungua app ya simu)
+        function sendSMS(phoneNumber, message) {
+            // Safisha namba: ondoa spaces, hakikisha inafaa kwa SMS
+            let cleanPhone = phoneNumber.replace(/\s/g, '');
+            if (!cleanPhone.startsWith('0') && !cleanPhone.startsWith('+')) {
+                cleanPhone = '0' + cleanPhone;
+            }
+            
+            const smsUrl = `sms:${cleanPhone}?body=${encodeURIComponent(message)}`;
+            window.location.href = smsUrl;
+        }
 
-      let unitsUsed = curr - prev;
-      if (unitsUsed < 0) {
-        alert("Hitilafu: Unit za sasa haziwezi kuwa ndogo kuliko za mwanzo!");
-        return;
-      }
-      const amount = unitsUsed * price;
+        // Kuonyesha rekodi zote
+        function displayRecords() {
+            const records = getRecords();
+            const container = document.getElementById('recordsList');
+            
+            if (records.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #999;">Hakuna rekodi bado</p>';
+                return;
+            }
+            
+            container.innerHTML = '';
+            records.forEach((record, index) => {
+                const div = document.createElement('div');
+                div.className = 'record-item';
+                div.innerHTML = `
+                    <div class="name">${record.name}</div>
+                    <div class="details">
+                        📞 ${record.phone}<br>
+                        📊 Matumizi: ${record.units} Units<br>
+                        💰 Jumla: TZS ${record.total.toLocaleString()}<br>
+                        📌 Hali: ${record.status}<br>
+                        📅 Tarehe: ${record.date}
+                    </div>
+                    <button class="delete-btn" onclick="deleteRecord(${index})">🗑 Futa</button>
+                `;
+                container.appendChild(div);
+            });
+        }
 
-      // Tengeneza Object ya JSON
-      const newRecord = {
-        id: 'rec_' + Date.now(),
-        name,
-        phone,
-        prev,
-        curr,
-        unitsUsed,
-        amount,
-        status,
-        date: new Date().toLocaleDateString()
-      };
-
-      // Hifadhi kwenye Local Storage kama JSON string
-      const currentRecords = getRecordsFromStorage();
-      currentRecords.push(newRecord);
-      localStorage.setItem('water_billing_records', JSON.stringify(currentRecords));
-
-      // Mfumo wa kutuma SMS ya kawaida kiotomatiki
-      const smsText = `Ndugu ${name}, Ankara yako ya maji: Unit zilizotumika ni ${unitsUsed}. Jumla ya Malipo ni TZS ${amount.toLocaleString()}. Hali: ${status}. Ahsante!`;
-      window.location.href = `sms:${phone}?&body=${encodeURIComponent(smsText)}`;
-
-      // Safisha Form
-      document.getElementById('waterForm').reset();
-      calculateUnitsUsed();
-      alert("Ankara imehifadhiwa kwenye JSON ya Browser na App ya SMS imefunguka!");
-    }
-
-    function fetchLocalRecords() {
-      const records = getRecordsFromStorage();
-      const tbody = document.getElementById('jsonTableBody');
-      tbody.innerHTML = '';
-
-      if (records.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#64748b; padding:30px;">Hakuna ankara zilizohifadhiwa bado.</td></tr>`;
-        return;
-      }
-
-      records.forEach(rec => {
-        const row = document.createElement('tr');
-        const badgeClass = rec.status === 'Paid' ? 'badge paid' : 'badge pending';
-
-        row.innerHTML = `
-          <td><strong>${rec.name}</strong></td>
-          <td>${rec.phone}</td>
-          <td style="font-size:0.85rem; color:#94a3b8;">${rec.prev} hadi ${rec.curr}</td>
-          <td><i class="fa-solid fa-faucet-drip" style="color:#38bdf8;"></i> ${rec.unitsUsed} Units</td>
-          <td style="font-weight:700; color:#10b981;">${rec.amount.toLocaleString()} TZS</td>
-          <td><span class="${badgeClass}">${rec.status}</span></td>
-          <td><button class="btn-delete" onclick="deleteLocalRecord('${rec.id}')"><i class="fa-solid fa-trash"></i></button></td>
-        `;
-        tbody.appendChild(row);
-      });
-    }
-
-    function deleteLocalRecord(id) {
-      if(!confirm("Je, una uhakika unataka kufuta rekodi hii?")) return;
-      let records = getRecordsFromStorage();
-      records = records.filter(rec => rec.id !== id);
-      localStorage.setItem('water_billing_records', JSON.stringify(records));
-      fetchLocalRecords();
-    }
-  </script>
+        // Kuhifadhi ankara na kutuma SMS
+        function saveAndSend(event) {
+            event.preventDefault();
+            
+            // Kuchukua data
+            const name = document.getElementById('customerName').value;
+            const phone = document.getElementById('phoneNumber').value;
+            const prev = parseFloat(document.getElementById('prevReading').value);
+            const curr = parseFloat(document.getElementById('currReading').value);
+            const price = parseFloat(document.getElementById('pricePerUnit').value);
+            const statusSelect = document.getElementById('status');
+            const statusText = statusSelect.options[statusSelect.selectedIndex].text;
+            const statusValue = statusSelect.value;
+            
+            // Validate
+            if (!name || !phone) {
+                alert('Tafadhali jaza jina na namba ya simu');
+                return;
+            }
+            
+            if (curr < prev) {
+                alert('Usomaji wa sasa hauwezi kuwa chini ya usomaji wa nyuma!');
+                return;
+            }
+            
+            // Kokotoa
+            const units = curr - prev;
+            const total = units * price;
+            const today = new Date().toLocaleDateString('sw-TZ');
+            
+            // Unda rekodi
+            const record = {
+                name: name,
+                phone: phone,
+                prev: prev,
+                curr: curr,
+                units: units,
+                price: price,
+                total: total,
+                status: statusValue === 'Imelipwa' ? 'Imelipwa ✅' : 'Haijalipwa ⏳',
+                date: today,
+                timestamp: Date.now()
+            };
+            
+            // Hifadhi kwenye Local Storage (JSON)
+            saveRecord(record);
+            
+            // Tengeneza SMS
+            const smsMessage = generateSMS(name, prev, curr, units, total, record.status);
+            
+            // Onyesha ujumbe wa kuthibitisha
+            if (confirm(`✅ Ankara imehifadhiwa!\n\nSMS itakayotumwa:\n${smsMessage}\n\nBonyeza OK kutuma SMS kwa ${phone}`)) {
+                // Tuma SMS
+                sendSMS(phone, smsMessage);
+            }
+            
+            // Safisha baadhi ya sehemu
+            document.getElementById('customerName').value = '';
+            document.getElementById('phoneNumber').value = '';
+            document.getElementById('prevReading').value = '25';
+            document.getElementById('currReading').value = '30';
+            document.getElementById('pricePerUnit').value = '2000';
+            document.getElementById('status').value = 'Haijalipwa';
+            
+            updateSMSPreview();
+            displayRecords();
+            
+            // Rudi kwenye tab ya rekodi kuonyesha imehifadhiwa
+            setTimeout(() => {
+                switchTab('records');
+            }, 500);
+        }
+        
+        // Kubadilisha tabs
+        function switchTab(tabName) {
+            const formTab = document.getElementById('formTab');
+            const recordsTab = document.getElementById('recordsTab');
+            const buttons = document.querySelectorAll('.tab-btn');
+            
+            if (tabName === 'form') {
+                formTab.classList.add('active');
+                recordsTab.classList.remove('active');
+                buttons[0].classList.add('active');
+                buttons[1].classList.remove('active');
+            } else {
+                formTab.classList.remove('active');
+                recordsTab.classList.add('active');
+                buttons[0].classList.remove('active');
+                buttons[1].classList.add('active');
+                displayRecords(); // Onyesha rekodi wakati wa kubadilisha
+            }
+        }
+        
+        // Weka event listeners
+        document.getElementById('billForm').addEventListener('submit', saveAndSend);
+        document.getElementById('customerName').addEventListener('input', updateSMSPreview);
+        document.getElementById('prevReading').addEventListener('input', updateSMSPreview);
+        document.getElementById('currReading').addEventListener('input', updateSMSPreview);
+        document.getElementById('pricePerUnit').addEventListener('input', updateSMSPreview);
+        document.getElementById('status').addEventListener('change', updateSMSPreview);
+        
+        // Initial preview
+        updateSMSPreview();
+        
+        // Onyesha rekodi zilizopo
+        displayRecords();
+    </script>
 </body>
 </html>
