@@ -2,8 +2,8 @@
 <html lang="sw">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mfumo wa Bili ya Maji - SMS</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Mfumo wa Bili ya Maji - SMS | Water Billing System</title>
     <style>
         * {
             margin: 0;
@@ -19,24 +19,38 @@
         }
 
         .container {
-            max-width: 600px;
+            max-width: 650px;
             margin: 0 auto;
             background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            border-radius: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
             overflow: hidden;
+            transition: all 0.3s ease;
         }
 
         .header {
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            background: linear-gradient(135deg, #0f2b4d 0%, #1a4a7a 100%);
             color: white;
             padding: 30px;
             text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: "💧";
+            position: absolute;
+            font-size: 80px;
+            opacity: 0.1;
+            bottom: -20px;
+            right: -20px;
+            transform: rotate(-15deg);
         }
 
         .header h1 {
             font-size: 1.8rem;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
+            font-weight: 700;
         }
 
         .header p {
@@ -44,59 +58,163 @@
             font-size: 0.9rem;
         }
 
+        .stats-bar {
+            display: flex;
+            justify-content: space-around;
+            background: #f8f9fa;
+            padding: 15px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .stat-card {
+            text-align: center;
+            flex: 1;
+        }
+
+        .stat-number {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #1a4a7a;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: #6c757d;
+            margin-top: 4px;
+        }
+
+        .tab-buttons {
+            display: flex;
+            background: #f8f9fa;
+            gap: 4px;
+            padding: 0 20px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 14px 20px;
+            background: transparent;
+            border: none;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: #6c757d;
+            border-radius: 12px 12px 0 0;
+            position: relative;
+        }
+
+        .tab-btn.active {
+            color: #1a4a7a;
+            background: white;
+        }
+
+        .tab-btn.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 3px 3px 0 0;
+        }
+
+        .tab-btn:hover:not(.active) {
+            background: #e9ecef;
+            color: #495057;
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
         .form-section {
             padding: 30px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
         }
 
         .form-group {
             margin-bottom: 20px;
         }
 
+        .form-group.full-width {
+            grid-column: span 2;
+        }
+
         label {
             display: block;
             margin-bottom: 8px;
             font-weight: 600;
-            color: #333;
-            font-size: 0.9rem;
+            color: #2c3e50;
+            font-size: 0.85rem;
+        }
+
+        label i {
+            margin-right: 6px;
         }
 
         input, select {
             width: 100%;
             padding: 12px 15px;
-            border: 2px solid #e0e0e0;
-            border-radius: 10px;
-            font-size: 1rem;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            font-size: 0.95rem;
             transition: all 0.3s;
+            background: #f8f9fa;
         }
 
         input:focus, select:focus {
             outline: none;
             border-color: #667eea;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
 
         .preview-box {
-            background: #f0f4ff;
+            background: linear-gradient(135deg, #f0f4ff 0%, #e8edff 100%);
             padding: 20px;
-            border-radius: 12px;
+            border-radius: 16px;
             margin: 20px 0;
-            border-left: 4px solid #667eea;
+            border: 1px solid rgba(102, 126, 234, 0.2);
         }
 
         .preview-box h3 {
-            color: #1e3c72;
+            color: #1a4a7a;
             margin-bottom: 15px;
-            font-size: 1rem;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .sms-preview {
-            background: #2d2d2d;
-            color: #0f0;
-            padding: 15px;
-            border-radius: 10px;
-            font-family: monospace;
+            background: #1a1a2e;
+            color: #00ff88;
+            padding: 18px;
+            border-radius: 14px;
+            font-family: 'Courier New', 'Fira Code', monospace;
             font-size: 0.85rem;
             white-space: pre-wrap;
             word-break: break-word;
+            line-height: 1.6;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.3);
+            border: 1px solid #00ff8833;
         }
 
         .btn-send {
@@ -104,84 +222,188 @@
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
-            padding: 15px;
-            border-radius: 10px;
-            font-size: 1.1rem;
+            padding: 16px;
+            border-radius: 14px;
+            font-size: 1rem;
             font-weight: bold;
             cursor: pointer;
-            transition: transform 0.2s;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
         }
 
         .btn-send:hover {
             transform: translateY(-2px);
+            box-shadow: 0 10px 25px -5px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-send:active {
+            transform: translateY(0);
         }
 
         .records-section {
-            padding: 0 30px 30px 30px;
+            padding: 30px;
+        }
+
+        .records-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .records-header h3 {
+            color: #2c3e50;
+        }
+
+        .search-box {
+            padding: 8px 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 25px;
+            width: 200px;
+            font-size: 0.85rem;
         }
 
         .records-list {
-            max-height: 400px;
+            max-height: 500px;
             overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
         }
 
         .record-item {
-            background: #f8f9fa;
-            border-radius: 10px;
-            padding: 15px;
+            background: white;
+            border-radius: 16px;
+            padding: 16px;
+            border: 1px solid #e9ecef;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .record-item:hover {
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            transform: translateX(4px);
+        }
+
+        .record-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
             margin-bottom: 10px;
-            border-left: 3px solid #667eea;
+            flex-wrap: wrap;
+            gap: 8px;
         }
 
-        .record-item .name {
+        .record-name {
             font-weight: bold;
-            color: #1e3c72;
+            color: #1a4a7a;
+            font-size: 1rem;
         }
 
-        .record-item .details {
-            font-size: 0.85rem;
-            color: #666;
-            margin-top: 5px;
+        .record-status {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: bold;
+        }
+
+        .status-paid {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-unpaid {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .record-details {
+            font-size: 0.8rem;
+            color: #6c757d;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+
+        .record-details span {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
         }
 
         .delete-btn {
             background: #dc3545;
             color: white;
             border: none;
-            padding: 5px 10px;
-            border-radius: 5px;
+            padding: 6px 14px;
+            border-radius: 8px;
             cursor: pointer;
-            font-size: 0.75rem;
-            margin-top: 8px;
+            font-size: 0.7rem;
+            transition: all 0.2s;
         }
 
-        .tab-buttons {
-            display: flex;
-            border-bottom: 2px solid #e0e0e0;
+        .delete-btn:hover {
+            background: #c82333;
+            transform: scale(1.02);
         }
 
-        .tab-btn {
-            flex: 1;
-            padding: 15px;
-            background: none;
-            border: none;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #adb5bd;
         }
 
-        .tab-btn.active {
-            color: #667eea;
-            border-bottom: 3px solid #667eea;
-        }
-
-        .tab-content {
-            display: none;
-        }
-
-        .tab-content.active {
+        .empty-state i {
+            font-size: 48px;
+            margin-bottom: 10px;
             display: block;
+        }
+
+        .toast-message {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #2c3e50;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            z-index: 1000;
+            animation: slideUp 0.3s ease;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+
+        @media (max-width: 550px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+                gap: 0;
+            }
+            .form-group.full-width {
+                grid-column: span 1;
+            }
+            .stats-bar {
+                flex-direction: column;
+                gap: 10px;
+            }
+            .records-header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .search-box {
+                width: 100%;
+            }
         }
     </style>
 </head>
@@ -190,6 +412,21 @@
         <div class="header">
             <h1>💧 Mfumo wa Bili ya Maji</h1>
             <p>Undaa ankara na utume SMS kwa mteja</p>
+        </div>
+
+        <div class="stats-bar" id="statsBar">
+            <div class="stat-card">
+                <div class="stat-number" id="totalCustomers">0</div>
+                <div class="stat-label">Wateja Waliohifadhiwa</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="totalRevenue">0</div>
+                <div class="stat-label">Jumla ya Mapato (TZS)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="unpaidCount">0</div>
+                <div class="stat-label">Bili Ambazo Hazijalipwa</div>
+            </div>
         </div>
 
         <div class="tab-buttons">
@@ -201,41 +438,43 @@
         <div id="formTab" class="tab-content active">
             <div class="form-section">
                 <form id="billForm">
-                    <div class="form-group">
-                        <label>👤 Jina la Mteja</label>
-                        <input type="text" id="customerName" placeholder="Mfano: Mickdady" required>
-                    </div>
+                    <div class="form-grid">
+                        <div class="form-group full-width">
+                            <label><i>👤</i> Jina la Mteja</label>
+                            <input type="text" id="customerName" placeholder="Mfano: Mickdady" required autocomplete="off">
+                        </div>
 
-                    <div class="form-group">
-                        <label>📱 Namba ya Simu</label>
-                        <input type="tel" id="phoneNumber" placeholder="Mfano: 0712345678" required>
-                    </div>
+                        <div class="form-group full-width">
+                            <label><i>📱</i> Namba ya Simu</label>
+                            <input type="tel" id="phoneNumber" placeholder="Mfano: 0712345678" required autocomplete="off">
+                        </div>
 
-                    <div class="form-group">
-                        <label>📊 Usomaji wa Nyuma (Units)</label>
-                        <input type="number" id="prevReading" step="0.1" value="25" required>
-                    </div>
+                        <div class="form-group">
+                            <label><i>📊</i> Usomaji wa Nyuma (Units)</label>
+                            <input type="number" id="prevReading" step="0.1" value="25" required>
+                        </div>
 
-                    <div class="form-group">
-                        <label>📊 Usomaji wa Sasa (Units)</label>
-                        <input type="number" id="currReading" step="0.1" value="30" required>
-                    </div>
+                        <div class="form-group">
+                            <label><i>📊</i> Usomaji wa Sasa (Units)</label>
+                            <input type="number" id="currReading" step="0.1" value="30" required>
+                        </div>
 
-                    <div class="form-group">
-                        <label>💰 Gharama kwa Unit (TZS)</label>
-                        <input type="number" id="pricePerUnit" value="2000" required>
-                    </div>
+                        <div class="form-group">
+                            <label><i>💰</i> Gharama kwa Unit (TZS)</label>
+                            <input type="number" id="pricePerUnit" value="2000" required>
+                        </div>
 
-                    <div class="form-group">
-                        <label>📌 Hali ya Malipo</label>
-                        <select id="status">
-                            <option value="Haijalipwa">⏳ Haijalipwa</option>
-                            <option value="Imelipwa">✅ Imelipwa</option>
-                        </select>
+                        <div class="form-group">
+                            <label><i>📌</i> Hali ya Malipo</label>
+                            <select id="status">
+                                <option value="Haijalipwa">⏳ Haijalipwa</option>
+                                <option value="Imelipwa">✅ Imelipwa</option>
+                            </select>
+                        </div>
                     </div>
 
                     <div class="preview-box">
-                        <h3>📱 SMS Itakayotumwa:</h3>
+                        <h3><i>📱</i> SMS Itakayotumwa:</h3>
                         <div class="sms-preview" id="smsPreview">
                             Ndugu Mickdady,
 
@@ -260,154 +499,227 @@ Water Billing System
         <!-- Records Tab -->
         <div id="recordsTab" class="tab-content">
             <div class="records-section">
-                <h3 style="margin-bottom: 15px;">📋 Rekodi Zilizohifadhiwa</h3>
+                <div class="records-header">
+                    <h3><i>📋</i> Rekodi Zilizohifadhiwa</h3>
+                    <input type="text" id="searchInput" class="search-box" placeholder="🔍 Tafuta kwa jina au namba..." oninput="filterRecords()">
+                </div>
                 <div id="recordsList" class="records-list">
-                    <p style="text-align: center; color: #999;">Hakuna rekodi bado</p>
+                    <div class="empty-state">
+                        <i>📭</i>
+                        <p>Hakuna rekodi bado</p>
+                        <small>Anza kwa kuunda ankara mpya</small>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        // Kuhifadhi na kupata rekodi kwenye Local Storage
+        // ==================== DATA MANAGEMENT ====================
         function getRecords() {
             const records = localStorage.getItem('water_bills');
             return records ? JSON.parse(records) : [];
         }
 
+        function saveRecords(records) {
+            localStorage.setItem('water_bills', JSON.stringify(records));
+            updateStatistics();
+            displayRecords();
+        }
+
         function saveRecord(record) {
             const records = getRecords();
-            records.push(record);
-            localStorage.setItem('water_bills', JSON.stringify(records));
+            records.unshift(record); // Add to beginning for newest first
+            saveRecords(records);
         }
 
         function deleteRecord(index) {
             const records = getRecords();
-            records.splice(index, 1);
-            localStorage.setItem('water_bills', JSON.stringify(records));
-            displayRecords();
+            const deletedRecord = records[index];
+            if (confirm(`Je, una uhakika unataka kufuta rekodi ya ${deletedRecord.name}?`)) {
+                records.splice(index, 1);
+                saveRecords(records);
+                showToast(`✅ Rekodi ya ${deletedRecord.name} imefutwa`);
+            }
         }
 
-        // Kutengeneza SMS
+        // ==================== STATISTICS ====================
+        function updateStatistics() {
+            const records = getRecords();
+            const totalCustomers = records.length;
+            const totalRevenue = records.reduce((sum, r) => sum + r.total, 0);
+            const unpaidCount = records.filter(r => r.status === 'Haijalipwa ⏳' || r.status === 'Haijalipwa').length;
+            
+            document.getElementById('totalCustomers').textContent = totalCustomers;
+            document.getElementById('totalRevenue').textContent = totalRevenue.toLocaleString();
+            document.getElementById('unpaidCount').textContent = unpaidCount;
+        }
+
+        // ==================== SMS GENERATION ====================
         function generateSMS(name, prev, curr, units, total, status) {
             const today = new Date();
-            const dateStr = today.toLocaleDateString('sw-TZ');
+            const dateStr = today.toLocaleDateString('sw-TZ', { day: '2-digit', month: '2-digit', year: 'numeric' });
             
-            return `Ndugu ${name},
+            const statusEmoji = status.includes('Imelipwa') ? '✅ Imelipwa' : '⏳ Haijalipwa';
 
-Bili yako ya maji tarehe ${dateStr}:
-✓ Usomaji wa Nyuma: ${prev} Units
-✓ Usomaji wa Sasa: ${curr} Units
-✓ Matumizi Halisi: ${units} Units
-✓ Jumla ya Bili: TZS ${total.toLocaleString()}
-✓ Hali: ${status}
+            return `🏢 *WATER BILLING SYSTEM*
+--------------------------------
+Ndugu ${name.toUpperCase()},
 
+📅 Tarehe: ${dateStr}
+--------------------------------
+📊 MAELEZO YA BILI:
+• Usomaji wa Nyuma: ${prev} Units
+• Usomaji wa Sasa: ${curr} Units
+• Matumizi Halisi: ${units} Units
+• Gharama kwa Unit: TZS ${parseFloat(document.getElementById('pricePerUnit')?.value || 2000).toLocaleString()}
+--------------------------------
+💰 Jumla ya Bili: TZS ${total.toLocaleString()}
+📌 Hali: ${statusEmoji}
+--------------------------------
 Asante kwa ushirikiano wako.
-Water Billing System`;
+💧 Huduma kwa jamii.`;
         }
 
-        // Kukokotoa matumizi na jumla
         function calculateBill() {
             const prev = parseFloat(document.getElementById('prevReading').value) || 0;
             const curr = parseFloat(document.getElementById('currReading').value) || 0;
             const price = parseFloat(document.getElementById('pricePerUnit').value) || 0;
-            
-            let units = curr - prev;
-            if (units < 0) units = 0;
+
+            let units = Math.max(0, curr - prev);
             const total = units * price;
-            
+
             return { units, total };
         }
 
-        // Update SMS preview
         function updateSMSPreview() {
             const name = document.getElementById('customerName').value || 'Mteja';
             const prev = parseFloat(document.getElementById('prevReading').value) || 0;
             const curr = parseFloat(document.getElementById('currReading').value) || 0;
             const price = parseFloat(document.getElementById('pricePerUnit').value) || 0;
             const statusSelect = document.getElementById('status');
-            const status = statusSelect.options[statusSelect.selectedIndex]?.text || 'Haijalipwa';
-            
-            let units = curr - prev;
-            if (units < 0) units = 0;
+            const statusValue = statusSelect.value;
+            const statusText = statusValue === 'Imelipwa' ? 'Imelipwa ✅' : 'Haijalipwa ⏳';
+
+            let units = Math.max(0, curr - prev);
             const total = units * price;
-            
-            const sms = generateSMS(name, prev, curr, units, total, status);
+
+            const sms = generateSMS(name, prev, curr, units, total, statusText);
             document.getElementById('smsPreview').innerText = sms;
         }
 
-        // Kutuma SMS (kufungua app ya simu)
+        // ==================== SMS SENDING ====================
         function sendSMS(phoneNumber, message) {
-            // Safisha namba: ondoa spaces, hakikisha inafaa kwa SMS
             let cleanPhone = phoneNumber.replace(/\s/g, '');
             if (!cleanPhone.startsWith('0') && !cleanPhone.startsWith('+')) {
                 cleanPhone = '0' + cleanPhone;
             }
             
+            // For mobile devices - opens SMS app
             const smsUrl = `sms:${cleanPhone}?body=${encodeURIComponent(message)}`;
             window.location.href = smsUrl;
         }
 
-        // Kuonyesha rekodi zote
+        // ==================== DISPLAY RECORDS ====================
+        let currentFilter = '';
+
+        function filterRecords() {
+            currentFilter = document.getElementById('searchInput')?.value.toLowerCase() || '';
+            displayRecords();
+        }
+
         function displayRecords() {
-            const records = getRecords();
+            let records = getRecords();
             const container = document.getElementById('recordsList');
             
+            // Apply search filter
+            if (currentFilter) {
+                records = records.filter(record => 
+                    record.name.toLowerCase().includes(currentFilter) || 
+                    record.phone.includes(currentFilter)
+                );
+            }
+
             if (records.length === 0) {
-                container.innerHTML = '<p style="text-align: center; color: #999;">Hakuna rekodi bado</p>';
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i>📭</i>
+                        <p>${currentFilter ? 'Hakuna rekodi inayolingana na search yako' : 'Hakuna rekodi bado'}</p>
+                        <small>${currentFilter ? 'Jaribu maneno mengine' : 'Anza kwa kuunda ankara mpya'}</small>
+                    </div>
+                `;
                 return;
             }
-            
+
             container.innerHTML = '';
-            records.forEach((record, index) => {
+            records.forEach((record, originalIndex) => {
+                // Find original index for deletion
+                const allRecords = getRecords();
+                const realIndex = allRecords.findIndex(r => r.timestamp === record.timestamp);
+                
                 const div = document.createElement('div');
                 div.className = 'record-item';
                 div.innerHTML = `
-                    <div class="name">${record.name}</div>
-                    <div class="details">
-                        📞 ${record.phone}<br>
-                        📊 Matumizi: ${record.units} Units<br>
-                        💰 Jumla: TZS ${record.total.toLocaleString()}<br>
-                        📌 Hali: ${record.status}<br>
-                        📅 Tarehe: ${record.date}
+                    <div class="record-header">
+                        <span class="record-name">👤 ${escapeHtml(record.name)}</span>
+                        <span class="record-status ${record.status === 'Imelipwa ✅' || record.status === 'Imelipwa' ? 'status-paid' : 'status-unpaid'}">
+                            ${record.status === 'Imelipwa ✅' || record.status === 'Imelipwa' ? '✅ Imelipwa' : '⏳ Haijalipwa'}
+                        </span>
                     </div>
-                    <button class="delete-btn" onclick="deleteRecord(${index})">🗑 Futa</button>
+                    <div class="record-details">
+                        <span>📞 ${record.phone}</span>
+                        <span>💧 ${record.units} Units</span>
+                        <span>💰 TZS ${record.total.toLocaleString()}</span>
+                        <span>📅 ${record.date}</span>
+                    </div>
+                    <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                        <button class="delete-btn" onclick="deleteRecord(${realIndex})">🗑 Futa Rekodi</button>
+                    </div>
                 `;
                 container.appendChild(div);
             });
         }
 
-        // Kuhifadhi ankara na kutuma SMS
+        // Helper function to escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // ==================== SAVE AND SEND ====================
         function saveAndSend(event) {
             event.preventDefault();
-            
-            // Kuchukua data
-            const name = document.getElementById('customerName').value;
-            const phone = document.getElementById('phoneNumber').value;
+
+            const name = document.getElementById('customerName').value.trim();
+            const phone = document.getElementById('phoneNumber').value.trim();
             const prev = parseFloat(document.getElementById('prevReading').value);
             const curr = parseFloat(document.getElementById('currReading').value);
             const price = parseFloat(document.getElementById('pricePerUnit').value);
             const statusSelect = document.getElementById('status');
-            const statusText = statusSelect.options[statusSelect.selectedIndex].text;
             const statusValue = statusSelect.value;
-            
-            // Validate
+
             if (!name || !phone) {
-                alert('Tafadhali jaza jina na namba ya simu');
+                showToast('⚠️ Tafadhali jaza jina na namba ya simu', 'error');
                 return;
             }
-            
+
+            if (phone.length < 9) {
+                showToast('⚠️ Namba ya simu si sahihi', 'error');
+                return;
+            }
+
             if (curr < prev) {
-                alert('Usomaji wa sasa hauwezi kuwa chini ya usomaji wa nyuma!');
+                showToast('⚠️ Usomaji wa sasa hauwezi kuwa chini ya usomaji wa nyuma!', 'error');
                 return;
             }
-            
-            // Kokotoa
+
             const units = curr - prev;
             const total = units * price;
             const today = new Date().toLocaleDateString('sw-TZ');
             
-            // Unda rekodi
+            const statusDisplay = statusValue === 'Imelipwa' ? 'Imelipwa ✅' : 'Haijalipwa ⏳';
+
             const record = {
                 name: name,
                 phone: phone,
@@ -416,46 +728,52 @@ Water Billing System`;
                 units: units,
                 price: price,
                 total: total,
-                status: statusValue === 'Imelipwa' ? 'Imelipwa ✅' : 'Haijalipwa ⏳',
+                status: statusDisplay,
                 date: today,
                 timestamp: Date.now()
             };
-            
-            // Hifadhi kwenye Local Storage (JSON)
+
             saveRecord(record);
             
-            // Tengeneza SMS
-            const smsMessage = generateSMS(name, prev, curr, units, total, record.status);
+            const smsMessage = generateSMS(name, prev, curr, units, total, statusDisplay);
             
-            // Onyesha ujumbe wa kuthibitisha
             if (confirm(`✅ Ankara imehifadhiwa!\n\nSMS itakayotumwa:\n${smsMessage}\n\nBonyeza OK kutuma SMS kwa ${phone}`)) {
-                // Tuma SMS
                 sendSMS(phone, smsMessage);
+                showToast(`📤 SMS imetumwa kwa ${name}`);
+            } else {
+                showToast(`💾 Ankara ya ${name} imehifadhiwa tu`);
             }
-            
-            // Safisha baadhi ya sehemu
+
+            // Reset form but keep preview
             document.getElementById('customerName').value = '';
             document.getElementById('phoneNumber').value = '';
             document.getElementById('prevReading').value = '25';
             document.getElementById('currReading').value = '30';
             document.getElementById('pricePerUnit').value = '2000';
             document.getElementById('status').value = 'Haijalipwa';
-            
+
             updateSMSPreview();
-            displayRecords();
-            
-            // Rudi kwenye tab ya rekodi kuonyesha imehifadhiwa
-            setTimeout(() => {
-                switchTab('records');
-            }, 500);
         }
-        
-        // Kubadilisha tabs
+
+        // ==================== TOAST NOTIFICATION ====================
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = 'toast-message';
+            toast.textContent = message;
+            toast.style.background = type === 'error' ? '#dc3545' : '#28a745';
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
+
+        // ==================== TAB SWITCHING ====================
         function switchTab(tabName) {
             const formTab = document.getElementById('formTab');
             const recordsTab = document.getElementById('recordsTab');
             const buttons = document.querySelectorAll('.tab-btn');
-            
+
             if (tabName === 'form') {
                 formTab.classList.add('active');
                 recordsTab.classList.remove('active');
@@ -466,23 +784,28 @@ Water Billing System`;
                 recordsTab.classList.add('active');
                 buttons[0].classList.remove('active');
                 buttons[1].classList.add('active');
-                displayRecords(); // Onyesha rekodi wakati wa kubadilisha
+                displayRecords();
+                updateStatistics();
             }
         }
-        
-        // Weka event listeners
+
+        // ==================== INITIALIZATION ====================
         document.getElementById('billForm').addEventListener('submit', saveAndSend);
-        document.getElementById('customerName').addEventListener('input', updateSMSPreview);
-        document.getElementById('prevReading').addEventListener('input', updateSMSPreview);
-        document.getElementById('currReading').addEventListener('input', updateSMSPreview);
-        document.getElementById('pricePerUnit').addEventListener('input', updateSMSPreview);
-        document.getElementById('status').addEventListener('change', updateSMSPreview);
         
-        // Initial preview
+        // Add input event listeners for live preview
+        const inputs = ['customerName', 'prevReading', 'currReading', 'pricePerUnit', 'status'];
+        inputs.forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.addEventListener('input', updateSMSPreview);
+                element.addEventListener('change', updateSMSPreview);
+            }
+        });
+
+        // Initial preview and display
         updateSMSPreview();
-        
-        // Onyesha rekodi zilizopo
         displayRecords();
+        updateStatistics();
     </script>
 </body>
 </html>
