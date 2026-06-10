@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Water Billing — Records Manager</title>
+  <title>Water Billing — Local JSON Manager</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     :root {
@@ -30,7 +30,6 @@
       background: #020617;
     }
 
-    /* Background Setup */
     .bg-overlay {
       position: fixed;
       inset: 0;
@@ -57,7 +56,6 @@
     }
     .btn-back:hover { color: #38bdf8; }
 
-    /* Dashboard Shell */
     .manager-card {
       width: min(950px, 100%);
       background: var(--card-bg);
@@ -69,7 +67,6 @@
       overflow: hidden;
     }
 
-    /* Tab Switcher Headers */
     .tabs-header {
       display: flex;
       background: rgba(2, 6, 23, 0.4);
@@ -99,11 +96,9 @@
       border-bottom: 3px solid #38bdf8;
     }
 
-    /* Tab Contents Dynamic Box */
     .tab-content { padding: 35px; display: none; }
     .tab-content.active { display: block; }
 
-    /* Forms & Inputs Configuration */
     .form-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -115,7 +110,7 @@
     .input-wrapper { display: flex; flex-direction: column; gap: 8px; }
     .input-wrapper label { font-size: 0.85rem; color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;}
     
-    input, select, textarea {
+    input, select {
       padding: 14px;
       border-radius: 12px;
       border: 1px solid rgba(255,255,255,0.08);
@@ -126,7 +121,6 @@
     }
     input:focus, select:focus { border-color: #38bdf8; background: rgba(2, 6, 23, 0.6); }
 
-    /* Auto Calculation Panel */
     .calc-preview-bar {
       background: rgba(56, 189, 248, 0.05);
       border: 1px solid rgba(56, 189, 248, 0.15);
@@ -155,7 +149,6 @@
     }
     .btn-action:hover { filter: brightness(1.1); transform: translateY(-1px); }
 
-    /* Tables Style for Tab 2 */
     .table-container { overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; text-align: left; }
     th, td { padding: 16px; border-bottom: 1px solid rgba(255,255,255,0.05); }
@@ -183,7 +176,7 @@
 
   <div class="nav-header">
     <a href="index.html" class="btn-back"><i class="fa-solid fa-arrow-left"></i> Home Hub</a>
-    <h2 style="font-weight: 800; letter-spacing: -0.5px;">Water Management Panel</h2>
+    <h2 style="font-weight: 800; letter-spacing: -0.5px;">Water Invoice Panel</h2>
   </div>
 
   <div class="manager-card">
@@ -192,7 +185,7 @@
       <button class="tab-btn active" onclick="switchTab(event, 'tab-create')">
         <i class="fa-solid fa-file-invoice-dollar"></i> Create New Invoice & SMS
       </button>
-      <button class="tab-btn" onclick="switchTab(event, 'tab-view'); fetchJSONRecords();">
+      <button class="tab-btn" onclick="switchTab(event, 'tab-view'); fetchLocalRecords();">
         <i class="fa-solid fa-database"></i> View JSON Stored Records
       </button>
     </div>
@@ -241,7 +234,7 @@
         </div>
 
         <button type="submit" class="btn-action">
-          <i class="fa-solid fa-cloud-arrow-up"></i> Hifadhi & Tuma Ankara SMS
+          <i class="fa-solid fa-square-plus"></i> Hifadhi Kwenye JSON & Tuma SMS
         </button>
       </form>
     </div>
@@ -261,7 +254,7 @@
             </tr>
           </thead>
           <tbody id="jsonTableBody">
-            <tr><td colspan="7" style="text-align:center; color:#64748b; padding:30px;">Inapakia data kutoka server...</td></tr>
+            <tr><td colspan="7" style="text-align:center; color:#64748b; padding:30px;">Hakuna data.</td></tr>
           </tbody>
         </table>
       </div>
@@ -270,32 +263,33 @@
   </div>
 
   <script>
-    // ================= 1. SWITCHING DASHBOARD TABS =================
     function switchTab(event, tabId) {
       document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      
       document.getElementById(tabId).classList.add('active');
       event.currentTarget.classList.add('active');
     }
 
-    // ================= 2. LIVE UNITS & PRICE ENGINE =================
     function calculateUnitsUsed() {
       const prev = Number(document.getElementById('wPrev').value) || 0;
       const curr = Number(document.getElementById('wCurr').value) || 0;
       const price = Number(document.getElementById('wPrice').value) || 0;
 
       let unitsUsed = curr - prev;
-      if (unitsUsed < 0) unitsUsed = 0; // Kuzuia namba hasi
+      if (unitsUsed < 0) unitsUsed = 0;
 
       const totalBill = unitsUsed * price;
-
       document.getElementById('lblUnits').innerText = `${unitsUsed.toLocaleString()} Units`;
       document.getElementById('lblTotal').innerText = `${totalBill.toLocaleString()} TZS`;
     }
 
-    // ================= 3. SAVE TO JSON AND SEND SMS LINK =================
-    async function saveWaterInvoice(event) {
+    // ================= PURE LOCAL JSON ENGINE =================
+    function getRecordsFromStorage() {
+      const stored = localStorage.getItem('water_billing_records');
+      return stored ? JSON.parse(stored) : [];
+    }
+
+    function saveWaterInvoice(event) {
       event.preventDefault();
 
       const name = document.getElementById('wName').value;
@@ -312,86 +306,67 @@
       }
       const amount = unitsUsed * price;
 
-      // Kazi ya kutuma data kwenye Server (`server.js`) ili izihifadhi kwenye JSON file
-      try {
-        const response = await fetch('/api/records', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name,
-            phone,
-            amount,
-            status,
-            deviceMetrics: { info: `Units: ${unitsUsed} (${prev} hadi ${curr})` }
-          })
-        });
+      // Tengeneza Object ya JSON
+      const newRecord = {
+        id: 'rec_' + Date.now(),
+        name,
+        phone,
+        prev,
+        curr,
+        unitsUsed,
+        amount,
+        status,
+        date: new Date().toLocaleDateString()
+      };
 
-        const result = await response.json();
-        
-        if (result.success) {
-          // Kutengeneza na Kufungua SMS Mfumo wa Simu kiotomatiki
-          const smsText = `Ndugu ${name}, Ankara yako ya maji tayari ipo tayari. Unit zilizotumika: ${unitsUsed}. Jumla ya Malipo ni TZS ${amount.toLocaleString()}. Hali ya malipo: ${status}. Ahsante!`;
-          
-          // Hii inafungua app ya SMS ya simu ikiwa imejaza namba na ujumbe kabisa
-          window.location.href = `sms:${phone}?&body=${encodeURIComponent(smsText)}`;
-          
-          // Reset form
-          document.getElementById('waterForm').reset();
-          calculateUnitsUsed();
-        } else {
-          alert("Imeshindwa kuhifadhi kwenye JSON: " + result.error);
-        }
-      } catch (err) {
-        alert("Hitilafu ya kuunganisha na server ya Pterodactyl.");
-      }
+      // Hifadhi kwenye Local Storage kama JSON string
+      const currentRecords = getRecordsFromStorage();
+      currentRecords.push(newRecord);
+      localStorage.setItem('water_billing_records', JSON.stringify(currentRecords));
+
+      // Mfumo wa kutuma SMS ya kawaida kiotomatiki
+      const smsText = `Ndugu ${name}, Ankara yako ya maji: Unit zilizotumika ni ${unitsUsed}. Jumla ya Malipo ni TZS ${amount.toLocaleString()}. Hali: ${status}. Ahsante!`;
+      window.location.href = `sms:${phone}?&body=${encodeURIComponent(smsText)}`;
+
+      // Safisha Form
+      document.getElementById('waterForm').reset();
+      calculateUnitsUsed();
+      alert("Ankara imehifadhiwa kwenye JSON ya Browser na App ya SMS imefunguka!");
     }
 
-    // ================= 4. FETCH JSON RECORDS TO TABLE =================
-    async function fetchJSONRecords() {
-      try {
-        const res = await fetch('/api/records');
-        const result = await res.json();
-        const tbody = document.getElementById('jsonTableBody');
-        tbody.innerHTML = '';
+    function fetchLocalRecords() {
+      const records = getRecordsFromStorage();
+      const tbody = document.getElementById('jsonTableBody');
+      tbody.innerHTML = '';
 
-        if (!result.data || result.data.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#64748b; padding:30px;">Hakuna ankara zilizohifadhiwa kwenye JSON bado.</td></tr>`;
-          return;
-        }
-
-        result.data.forEach(rec => {
-          const row = document.createElement('tr');
-          const badgeClass = rec.status === 'Paid' ? 'badge paid' : 'badge pending';
-          const details = rec.deviceMetrics && rec.deviceMetrics.info ? rec.deviceMetrics.info : 'N/A';
-
-          row.innerHTML = `
-            <td><strong>${rec.name}</strong></td>
-            <td>${rec.phone}</td>
-            <td style="font-size:0.85rem; color:#94a3b8;">${details}</td>
-            <td><i class="fa-solid fa-faucet-drip" style="color:#38bdf8;"></i> Mita Moja kwa Moja</td>
-            <td style="font-weight:700; color:#10b981;">${Number(rec.amount).toLocaleString()} TZS</td>
-            <td><span class="${badgeClass}">${rec.status}</span></td>
-            <td><button class="btn-delete" onclick="deleteJSONRecord('${rec.id}')"><i class="fa-solid fa-trash"></i></button></td>
-          `;
-          tbody.appendChild(row);
-        });
-      } catch (err) {
-        document.getElementById('jsonTableBody').innerHTML = `<tr><td colspan="7" style="text-align:center; color:#ef4444; padding:30px;">Imeshindwa kuvuta data kutoka server.</td></tr>`;
+      if (records.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#64748b; padding:30px;">Hakuna ankara zilizohifadhiwa bado.</td></tr>`;
+        return;
       }
+
+      records.forEach(rec => {
+        const row = document.createElement('tr');
+        const badgeClass = rec.status === 'Paid' ? 'badge paid' : 'badge pending';
+
+        row.innerHTML = `
+          <td><strong>${rec.name}</strong></td>
+          <td>${rec.phone}</td>
+          <td style="font-size:0.85rem; color:#94a3b8;">${rec.prev} hadi ${rec.curr}</td>
+          <td><i class="fa-solid fa-faucet-drip" style="color:#38bdf8;"></i> ${rec.unitsUsed} Units</td>
+          <td style="font-weight:700; color:#10b981;">${rec.amount.toLocaleString()} TZS</td>
+          <td><span class="${badgeClass}">${rec.status}</span></td>
+          <td><button class="btn-delete" onclick="deleteLocalRecord('${rec.id}')"><i class="fa-solid fa-trash"></i></button></td>
+        `;
+        tbody.appendChild(row);
+      });
     }
 
-    // ================= 5. DELETE FROM JSON FILE =================
-    async function deleteJSONRecord(id) {
-      if(!confirm("Je, una uhakika unataka kufuta kabisa ankara hii kwenye file la JSON?")) return;
-      try {
-        const res = await fetch(`/api/records/${id}`, { method: 'DELETE' });
-        const result = await res.json();
-        if(result.success) {
-          fetchJSONRecords();
-        }
-      } catch (err) {
-        alert("Imeshindwa kufuta.");
-      }
+    function deleteLocalRecord(id) {
+      if(!confirm("Je, una uhakika unataka kufuta rekodi hii?")) return;
+      let records = getRecordsFromStorage();
+      records = records.filter(rec => rec.id !== id);
+      localStorage.setItem('water_billing_records', JSON.stringify(records));
+      fetchLocalRecords();
     }
   </script>
 </body>
