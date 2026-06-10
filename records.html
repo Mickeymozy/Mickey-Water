@@ -3,171 +3,396 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Water Billing Records (JSON Database)</title>
+  <title>Water Billing — Records Manager</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     :root {
       color-scheme: dark;
+      color: #f1f5f9;
       background: #020617;
-      color: #f8fafc;
-      font-family: system-ui, sans-serif;
+      accent-color: #38bdf8;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --error: #ef4444;
+      --card-bg: rgba(15, 23, 42, 0.7);
+      --border-color: rgba(255, 255, 255, 0.06);
     }
-    body { max-width: 900px; margin: auto; padding: 24px; }
-    h1 { background: linear-gradient(135deg, #fff 30%, #38bdf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-    
-    .panel { background: #0f172a; padding: 24px; border-radius: 16px; border: 1px solid #1e293b; margin-bottom: 24px; }
-    .form-group { display: grid; grid-template-columns: 2fr 1.2fr 1fr 1fr; gap: 12px; margin-top: 15px; }
-    @media (max-width: 600px) { .form-group { grid-template-columns: 1fr; } }
-    
-    input, select, button { padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #1e293b; color: white; font-size: 0.95rem; }
-    button { background: #2563eb; font-weight: bold; cursor: pointer; border: none; }
-    button:hover { background: #1d4ed8; }
-    button.btn-delete { background: #dc2626; padding: 6px 12px; font-size: 0.85rem; }
-    button.btn-delete:hover { background: #b91c1c; }
 
-    table { width: 100%; border-collapse: collapse; margin-top: 15px; text-align: left; }
-    th, td { padding: 14px; border-bottom: 1px solid #1e293b; }
-    th { background: #1e293b; color: #38bdf8; }
-    tr:hover { background: rgba(255,255,255,0.02); }
-
-    .badge { padding: 4px 8px; border-radius: 6px; font-size: 0.8rem; font-weight: bold; }
-    .badge.paid { background: rgba(34,197,94,0.15); color: #4ade80; }
-    .badge.pending { background: rgba(245,158,11,0.15); color: #fbbf24; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     
-    .nav-link { display: inline-block; margin-bottom: 15px; color: #38bdf8; text-decoration: none; font-size: 0.9rem; }
+    body {
+      min-height: 100vh;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      padding: 30px 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: #020617;
+    }
+
+    /* Background Setup */
+    .bg-overlay {
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(circle at top right, rgba(56, 189, 248, 0.08) 0%, transparent 50%),
+                  radial-gradient(circle at bottom left, rgba(37, 99, 235, 0.05) 0%, transparent 50%);
+      z-index: -1;
+    }
+
+    .nav-header {
+      width: min(950px, 100%);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 25px;
+    }
+
+    .btn-back {
+      color: #94a3b8;
+      text-decoration: none;
+      font-size: 0.95rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-back:hover { color: #38bdf8; }
+
+    /* Dashboard Shell */
+    .manager-card {
+      width: min(950px, 100%);
+      background: var(--card-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--border-color);
+      border-radius: 24px;
+      box-shadow: 0 40px 60px rgba(0, 0, 0, 0.5);
+      overflow: hidden;
+    }
+
+    /* Tab Switcher Headers */
+    .tabs-header {
+      display: flex;
+      background: rgba(2, 6, 23, 0.4);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 18px;
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      transition: all 0.2s ease;
+    }
+
+    .tab-btn:hover { color: #f8fafc; background: rgba(255,255,255,0.01); }
+    .tab-btn.active {
+      color: #38bdf8;
+      background: rgba(15, 23, 42, 0.5);
+      border-bottom: 3px solid #38bdf8;
+    }
+
+    /* Tab Contents Dynamic Box */
+    .tab-content { padding: 35px; display: none; }
+    .tab-content.active { display: block; }
+
+    /* Forms & Inputs Configuration */
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 25px;
+    }
+    @media (max-width: 650px) { .form-grid { grid-template-columns: 1fr; } }
+
+    .input-wrapper { display: flex; flex-direction: column; gap: 8px; }
+    .input-wrapper label { font-size: 0.85rem; color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;}
+    
+    input, select, textarea {
+      padding: 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(2, 6, 23, 0.4);
+      color: white;
+      font-size: 0.95rem;
+      outline: none;
+    }
+    input:focus, select:focus { border-color: #38bdf8; background: rgba(2, 6, 23, 0.6); }
+
+    /* Auto Calculation Panel */
+    .calc-preview-bar {
+      background: rgba(56, 189, 248, 0.05);
+      border: 1px solid rgba(56, 189, 248, 0.15);
+      padding: 18px;
+      border-radius: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 25px;
+    }
+
+    .btn-action {
+      width: 100%;
+      padding: 16px;
+      border-radius: 14px;
+      font-weight: 700;
+      font-size: 1rem;
+      cursor: pointer;
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      background: linear-gradient(135deg, #2563eb 0%, #06b6d4 100%);
+      color: white;
+    }
+    .btn-action:hover { filter: brightness(1.1); transform: translateY(-1px); }
+
+    /* Tables Style for Tab 2 */
+    .table-container { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th, td { padding: 16px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    th { background: rgba(2, 6, 23, 0.3); color: #38bdf8; font-size: 0.9rem; text-transform: uppercase; }
+    tr:hover { background: rgba(255,255,255,0.01); }
+
+    .badge { padding: 4px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: 700; }
+    .badge.paid { background: rgba(16, 185, 129, 0.1); color: #34d399; }
+    .badge.pending { background: rgba(245, 158, 11, 0.1); color: #fbbf24; }
+
+    .btn-delete {
+      background: rgba(239, 68, 68, 0.1);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.15);
+      padding: 6px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .btn-delete:hover { background: #ef4444; color: white; }
   </style>
 </head>
 <body>
 
-  <a class="nav-link" href="index.html">← Rudi Mwanzo (Home)</a>
-  <h1>📂 Ankara na Records (JSON Storage)</h1>
-  <p style="color: #94a3b8; margin-top:-10px;">Mfumo huu unahifadhi data kwenye file la ndani la server moja kwa moja bila database ya nje.</p>
+  <div class="bg-overlay" aria-hidden="true"></div>
 
-  <div class="panel">
-    <h3>Weka Ankara Mpya</h3>
-    <form id="recordForm" onsubmit="addRecord(event)">
-      <div class="form-group">
-        <input type="text" id="custName" placeholder="Jina la Mteja" required>
-        <input type="text" id="custPhone" placeholder="Namba ya Simu">
-        <input type="number" id="custAmount" placeholder="Kiasi (TZS)" required>
-        <select id="custStatus">
-          <option value="Pending">Inasubiri</option>
-          <option value="Paid">Imelipwa</option>
-        </select>
-      </div>
-      <button type="submit" style="margin-top:15px; width:100%;">Hifadhi Record Mpya</button>
-    </form>
+  <div class="nav-header">
+    <a href="index.html" class="btn-back"><i class="fa-solid fa-arrow-left"></i> Home Hub</a>
+    <h2 style="font-weight: 800; letter-spacing: -0.5px;">Water Management Panel</h2>
   </div>
 
-  <div class="panel">
-    <h3>Orodha ya Ankara Zilizopo</h3>
-    <div style="overflow-x: auto;">
-      <table>
-        <thead>
-          <tr>
-            <th>Mteja</th>
-            <th>Namba ya Simu</th>
-            <th>Kiasi</th>
-            <th>Hali (Status)</th>
-            <th>Muda</th>
-            <th>Kitendo</th>
-          </tr>
-        </thead>
-        <tbody id="recordsTableBody">
-          <tr><td colspan="6" style="text-align:center; color:#94a3b8;">Inapakia data...</td></tr>
-        </tbody>
-      </table>
+  <div class="manager-card">
+    
+    <div class="tabs-header">
+      <button class="tab-btn active" onclick="switchTab(event, 'tab-create')">
+        <i class="fa-solid fa-file-invoice-dollar"></i> Create New Invoice & SMS
+      </button>
+      <button class="tab-btn" onclick="switchTab(event, 'tab-view'); fetchJSONRecords();">
+        <i class="fa-solid fa-database"></i> View JSON Stored Records
+      </button>
     </div>
+
+    <div id="tab-create" class="tab-content active">
+      <form id="waterForm" onsubmit="saveWaterInvoice(event)">
+        <div class="form-grid">
+          <div class="input-wrapper">
+            <label>Jina la Mteja</label>
+            <input type="text" id="wName" placeholder="Mfa. Juma Hamisi" required>
+          </div>
+          <div class="input-wrapper">
+            <label>Namba ya Simu</label>
+            <input type="tel" id="wPhone" placeholder="Mfa. 0712345678" required>
+          </div>
+          <div class="input-wrapper">
+            <label>Unit za Mwanzo (Previous Reading)</label>
+            <input type="number" id="wPrev" value="0" min="0" oninput="calculateUnitsUsed()" required>
+          </div>
+          <div class="input-wrapper">
+            <label>Unit za Sasa (Current Reading)</label>
+            <input type="number" id="wCurr" value="0" min="0" oninput="calculateUnitsUsed()" required>
+          </div>
+          <div class="input-wrapper">
+            <label>Gharama kwa kila Unit (TZS)</label>
+            <input type="number" id="wPrice" value="2000" min="0" oninput="calculateUnitsUsed()" required>
+          </div>
+          <div class="input-wrapper">
+            <label>Hali ya Ankara (Status)</label>
+            <select id="wStatus">
+              <option value="Pending">Inasubiri (Pending)</option>
+              <option value="Paid">Imelipwa (Paid)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="calc-preview-bar">
+          <div>
+            <span style="color:#94a3b8; font-size:0.85rem; font-weight:700; display:block; text-transform:uppercase;">Unit Zilizotumika</span>
+            <span id="lblUnits" style="font-size:1.4rem; font-weight:800; color:#38bdf8;">0 Units</span>
+          </div>
+          <div style="text-align: right;">
+            <span style="color:#94a3b8; font-size:0.85rem; font-weight:700; display:block; text-transform:uppercase;">Jumla ya Gharama</span>
+            <span id="lblTotal" style="font-size:1.4rem; font-weight:800; color:#10b981;">0 TZS</span>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-action">
+          <i class="fa-solid fa-cloud-arrow-up"></i> Hifadhi & Tuma Ankara SMS
+        </button>
+      </form>
+    </div>
+
+    <div id="tab-view" class="tab-content">
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Mteja</th>
+              <th>Simu</th>
+              <th>Vipimo (Readings)</th>
+              <th>Unit Zilizotumika</th>
+              <th>Jumla (TZS)</th>
+              <th>Hali</th>
+              <th>Kitendo</th>
+            </tr>
+          </thead>
+          <tbody id="jsonTableBody">
+            <tr><td colspan="7" style="text-align:center; color:#64748b; padding:30px;">Inapakia data kutoka server...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
   </div>
 
   <script>
-    // Kuchukua na kuonyesha data pindi page inapofunguka
-    async function fetchRecords() {
+    // ================= 1. SWITCHING DASHBOARD TABS =================
+    function switchTab(event, tabId) {
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      
+      document.getElementById(tabId).classList.add('active');
+      event.currentTarget.classList.add('active');
+    }
+
+    // ================= 2. LIVE UNITS & PRICE ENGINE =================
+    function calculateUnitsUsed() {
+      const prev = Number(document.getElementById('wPrev').value) || 0;
+      const curr = Number(document.getElementById('wCurr').value) || 0;
+      const price = Number(document.getElementById('wPrice').value) || 0;
+
+      let unitsUsed = curr - prev;
+      if (unitsUsed < 0) unitsUsed = 0; // Kuzuia namba hasi
+
+      const totalBill = unitsUsed * price;
+
+      document.getElementById('lblUnits').innerText = `${unitsUsed.toLocaleString()} Units`;
+      document.getElementById('lblTotal').innerText = `${totalBill.toLocaleString()} TZS`;
+    }
+
+    // ================= 3. SAVE TO JSON AND SEND SMS LINK =================
+    async function saveWaterInvoice(event) {
+      event.preventDefault();
+
+      const name = document.getElementById('wName').value;
+      const phone = document.getElementById('wPhone').value;
+      const prev = Number(document.getElementById('wPrev').value);
+      const curr = Number(document.getElementById('wCurr').value);
+      const price = Number(document.getElementById('wPrice').value);
+      const status = document.getElementById('wStatus').value;
+
+      let unitsUsed = curr - prev;
+      if (unitsUsed < 0) {
+        alert("Hitilafu: Unit za sasa haziwezi kuwa ndogo kuliko za mwanzo!");
+        return;
+      }
+      const amount = unitsUsed * price;
+
+      // Kazi ya kutuma data kwenye Server (`server.js`) ili izihifadhi kwenye JSON file
+      try {
+        const response = await fetch('/api/records', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name,
+            phone,
+            amount,
+            status,
+            deviceMetrics: { info: `Units: ${unitsUsed} (${prev} hadi ${curr})` }
+          })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+          // Kutengeneza na Kufungua SMS Mfumo wa Simu kiotomatiki
+          const smsText = `Ndugu ${name}, Ankara yako ya maji tayari ipo tayari. Unit zilizotumika: ${unitsUsed}. Jumla ya Malipo ni TZS ${amount.toLocaleString()}. Hali ya malipo: ${status}. Ahsante!`;
+          
+          // Hii inafungua app ya SMS ya simu ikiwa imejaza namba na ujumbe kabisa
+          window.location.href = `sms:${phone}?&body=${encodeURIComponent(smsText)}`;
+          
+          // Reset form
+          document.getElementById('waterForm').reset();
+          calculateUnitsUsed();
+        } else {
+          alert("Imeshindwa kuhifadhi kwenye JSON: " + result.error);
+        }
+      } catch (err) {
+        alert("Hitilafu ya kuunganisha na server ya Pterodactyl.");
+      }
+    }
+
+    // ================= 4. FETCH JSON RECORDS TO TABLE =================
+    async function fetchJSONRecords() {
       try {
         const res = await fetch('/api/records');
         const result = await res.json();
-        
-        const tbody = document.getElementById('recordsTableBody');
+        const tbody = document.getElementById('jsonTableBody');
         tbody.innerHTML = '';
 
         if (!result.data || result.data.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#94a3b8;">Hakuna record yoyote iliyohifadhiwa bado.</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#64748b; padding:30px;">Hakuna ankara zilizohifadhiwa kwenye JSON bado.</td></tr>`;
           return;
         }
 
         result.data.forEach(rec => {
           const row = document.createElement('tr');
-          const statusBadge = rec.status === 'Paid' ? '<span class="badge paid">Imelipwa</span>' : '<span class="badge pending">Inasubiri</span>';
-          const dateFormatted = new Date(rec.createdAt).toLocaleString('en-US', { hour12: true });
+          const badgeClass = rec.status === 'Paid' ? 'badge paid' : 'badge pending';
+          const details = rec.deviceMetrics && rec.deviceMetrics.info ? rec.deviceMetrics.info : 'N/A';
 
           row.innerHTML = `
             <td><strong>${rec.name}</strong></td>
             <td>${rec.phone}</td>
-            <td style="color:#38bdf8; font-weight:bold;">${Number(rec.amount).toLocaleString()} TZS</td>
-            <td>${statusBadge}</td>
-            <td style="font-size:0.85rem; color:#94a3b8;">${dateFormatted}</td>
-            <td><button class="btn-delete" onclick="deleteRecord('${rec.id}')">Futa</button></td>
+            <td style="font-size:0.85rem; color:#94a3b8;">${details}</td>
+            <td><i class="fa-solid fa-faucet-drip" style="color:#38bdf8;"></i> Mita Moja kwa Moja</td>
+            <td style="font-weight:700; color:#10b981;">${Number(rec.amount).toLocaleString()} TZS</td>
+            <td><span class="${badgeClass}">${rec.status}</span></td>
+            <td><button class="btn-delete" onclick="deleteJSONRecord('${rec.id}')"><i class="fa-solid fa-trash"></i></button></td>
           `;
           tbody.appendChild(row);
         });
       } catch (err) {
-        document.getElementById('recordsTableBody').innerHTML = `<tr><td colspan="6" style="text-align:center; color:#ef4444;">Imeshindwa kuunganisha na Server!</td></tr>`;
+        document.getElementById('jsonTableBody').innerHTML = `<tr><td colspan="7" style="text-align:center; color:#ef4444; padding:30px;">Imeshindwa kuvuta data kutoka server.</td></tr>`;
       }
     }
 
-    // Kuongeza record mpya
-    async function addRecord(event) {
-      event.preventDefault();
-      
-      const name = document.getElementById('custName').value;
-      const phone = document.getElementById('custPhone').value;
-      const amount = document.getElementById('custAmount').value;
-      const status = document.getElementById('custStatus').value;
-
-      // Kuchukua device metrics za browser kwa ushirikiano
-      const deviceMetrics = {
-        platform: navigator.platform,
-        userAgent: navigator.userAgent,
-        screenSize: `${window.innerWidth}x${window.innerHeight}`
-      };
-
-      try {
-        const res = await fetch('/api/records', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, phone, amount, status, deviceMetrics })
-        });
-        
-        const result = await res.json();
-        if (result.success) {
-          document.getElementById('recordForm').reset();
-          fetchRecords(); // Refresh table
-        } else {
-          alert("Error: " + result.error);
-        }
-      } catch (err) {
-        alert("Imeshindwa kuhifadhi record. Hakikisha server ipo hewani.");
-      }
-    }
-
-    // Kufuta record
-    async function deleteRecord(id) {
-      if (!confirm("Je, una uhakika unataka kufuta kabisa ankara hii?")) return;
-
+    // ================= 5. DELETE FROM JSON FILE =================
+    async function deleteJSONRecord(id) {
+      if(!confirm("Je, una uhakika unataka kufuta kabisa ankara hii kwenye file la JSON?")) return;
       try {
         const res = await fetch(`/api/records/${id}`, { method: 'DELETE' });
         const result = await res.json();
-        if (result.success) {
-          fetchRecords(); // Refresh table
-        } else {
-          alert("Error: " + result.error);
+        if(result.success) {
+          fetchJSONRecords();
         }
       } catch (err) {
         alert("Imeshindwa kufuta.");
       }
     }
-
-    // Run tunapofungua ukurasa
-    window.onload = fetchRecords;
   </script>
 </body>
 </html>
