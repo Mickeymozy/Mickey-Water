@@ -3,442 +3,170 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Water Billing - Records Management</title>
+  <title>Water Billing Records (JSON Database)</title>
   <style>
-    :root { --bg:#0f172a; --surface:#111827; --text:#e2e8f0; --muted:#94a3b8; --border:#334155; --primary:#38bdf8; --accent:#2563eb; --success:#22c55e; --error:#f87171; --warning:#f59e0b; }
-    *{box-sizing:border-box;}
-    body{margin:0;min-height:100vh;font-family:system-ui,sans-serif;background:linear-gradient(135deg,#030711 0%,#0f172a 100%);color:var(--text);}
-    header{padding:20px 24px;display:flex;justify-content:space-between;align-items:center;background:rgba(15,23,42,.92);border-bottom:1px solid rgba(148,163,184,.12);flex-wrap:wrap;gap:15px;}
-    header h1{margin:0;font-size:1.6rem;}
-    header .actions{display:flex;gap:12px;}
-    header button, header a{border:none;border-radius:12px;padding:10px 16px;font-weight:700;background:rgba(56,189,248,.14);color:var(--text);text-decoration:none;cursor:pointer;transition:.2s;}
-    header button:hover, header a:hover{background:rgba(56,189,248,.22);}
-    main{padding:24px;max-width:1400px;margin:0 auto;display:grid;gap:20px;}
-    .tabs{display:flex;gap:8px;border-bottom:2px solid var(--border);margin-bottom:12px;flex-wrap:wrap;}
-    .tab-btn{border:none;background:none;color:var(--muted);padding:14px 20px;font-size:1rem;font-weight:600;cursor:pointer;border-bottom:3px solid transparent;transition:.2s;position:relative;bottom:-2px;}
-    .tab-btn:hover{color:var(--text);}
-    .tab-btn.active{color:var(--primary);border-bottom-color:var(--primary);}
-    .tab-content{display:none;}
-    .tab-content.active{display:block;}
-    .summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:20px;}
-    .metric{padding:18px;border-radius:18px;background:var(--surface);border:1px solid var(--border);}
-    .metric span{font-size:0.85rem;color:var(--muted);}
-    .metric strong{display:block;font-size:1.9rem;margin-top:10px;color:#fff;}
-    .table-wrap{overflow-x:auto;background:var(--surface);border:1px solid var(--border);border-radius:20px;}
-    table{width:100%;border-collapse:collapse;min-width:800px;}
-    th,td{padding:14px 16px;text-align:left;border-bottom:1px solid rgba(148,163,184,.1);}
-    th{color:var(--muted);text-transform:uppercase;font-size:.78rem;letter-spacing:.08em;}
-    td{color:#f8fafc;}
-    .empty{padding:40px;text-align:center;color:var(--muted);}
-    .message{padding:16px 18px;border-radius:16px;background:rgba(56,189,248,.12);color:#cffafe;display:none;margin-bottom:20px;}
-    .message.error{background:rgba(248,113,113,.12);color:#fca5a5;}
-    .message.success{background:rgba(34,197,94,.12);color:#86efac;}
-    .message.warning{background:rgba(245,158,11,.12);color:#fcd34d;}
-    .form-group{margin-bottom:20px;}
-    .form-group label{display:block;margin-bottom:8px;font-weight:600;color:var(--text);}
-    .form-group input{width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:12px;background:rgba(15,23,42,.8);color:var(--text);font-family:inherit;font-size:1rem;transition:.2s;}
-    .form-group input:focus{outline:none;border-color:var(--primary);background:rgba(15,23,42,.9);}
-    .form-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px;}
-    .form-section{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:24px;}
-    .calculation-display{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:12px;margin-bottom:20px;}
-    .calc-item{padding:12px;border-radius:12px;background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.2);}
-    .calc-label{font-size:.85rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;}
-    .calc-value{display:block;font-size:1.6rem;font-weight:700;color:var(--primary);margin-top:6px;}
-    .form-actions{display:flex;gap:12px;margin-top:24px;flex-wrap:wrap;}
-    .btn{border:none;border-radius:12px;padding:12px 24px;font-weight:700;cursor:pointer;transition:.2s;font-size:1rem;}
-    .btn-primary{background:rgba(56,189,248,.24);color:var(--text);border:1px solid var(--primary);}
-    .btn-primary:hover{background:rgba(56,189,248,.32);}
-    .btn-success{background:rgba(34,197,94,.24);color:#86efac;border:1px solid var(--success);}
-    .btn-success:hover{background:rgba(34,197,94,.35);}
-    .btn-secondary{background:rgba(148,163,184,.12);color:var(--text);border:1px solid var(--border);}
-    .btn-secondary:hover{background:rgba(148,163,184,.2);}
-    .btn-danger{background:rgba(248,113,113,.12);color:#fca5a5;border:1px solid rgba(248,113,113,.3);}
-    .btn-danger:hover{background:rgba(248,113,113,.2);}
-    .required::after{content:" *";color:var(--error);}
-    .sms-option{margin:15px 0;padding:15px;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:12px;}
-    .sms-option label{display:flex;align-items:center;gap:10px;cursor:pointer;}
-    .sms-option input{width:auto;margin-right:8px;transform:scale(1.2);}
-    .sms-preview{background:rgba(0,0,0,.3);padding:12px;border-radius:10px;margin-top:10px;font-size:0.9rem;font-family:monospace;white-space:pre-wrap;}
-    .btn-sms{background:rgba(34,197,94,.15);color:#86efac;border:1px solid #22c55e;padding:6px 12px;border-radius:8px;cursor:pointer;font-weight:600;transition:.2s;}
-    .btn-sms:hover{background:rgba(34,197,94,.25);transform:scale(1.02);}
+    :root {
+      color-scheme: dark;
+      background: #020617;
+      color: #f8fafc;
+      font-family: system-ui, sans-serif;
+    }
+    body { max-width: 900px; margin: auto; padding: 24px; }
+    h1 { background: linear-gradient(135deg, #fff 30%, #38bdf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    
+    .panel { background: #0f172a; padding: 24px; border-radius: 16px; border: 1px solid #1e293b; margin-bottom: 24px; }
+    .form-group { display: grid; grid-template-columns: 2fr 1.2fr 1fr 1fr; gap: 12px; margin-top: 15px; }
+    @media (max-width: 600px) { .form-group { grid-template-columns: 1fr; } }
+    
+    input, select, button { padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #1e293b; color: white; font-size: 0.95rem; }
+    button { background: #2563eb; font-weight: bold; cursor: pointer; border: none; }
+    button:hover { background: #1d4ed8; }
+    button.btn-delete { background: #dc2626; padding: 6px 12px; font-size: 0.85rem; }
+    button.btn-delete:hover { background: #b91c1c; }
+
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; text-align: left; }
+    th, td { padding: 14px; border-bottom: 1px solid #1e293b; }
+    th { background: #1e293b; color: #38bdf8; }
+    tr:hover { background: rgba(255,255,255,0.02); }
+
+    .badge { padding: 4px 8px; border-radius: 6px; font-size: 0.8rem; font-weight: bold; }
+    .badge.paid { background: rgba(34,197,94,0.15); color: #4ade80; }
+    .badge.pending { background: rgba(245,158,11,0.15); color: #fbbf24; }
+    
+    .nav-link { display: inline-block; margin-bottom: 15px; color: #38bdf8; text-decoration: none; font-size: 0.9rem; }
   </style>
 </head>
 <body>
-  <header>
-    <div>
-      <h1>🌊 Water Billing Records <span id="connectionStatus" style="font-size: 0.9rem; font-weight: normal; margin-left: 10px; padding: 4px 10px; border-radius: 20px;"></span></h1>
-      <p style="margin:8px 0 0;color:var(--muted);">Manage water meter readings and billing records</p>
-    </div>
-    <div class="actions">
-      <button id="refreshBtn">🔄 Refresh</button>
-      <button onclick="logout()">🚪 Logout</button>
-    </div>
-  </header>
-  <main>
-    <div class="tabs">
-      <button class="tab-btn active" data-tab="view-records">📋 View Records</button>
-      <button class="tab-btn" data-tab="add-record">➕ Add Record & Send SMS</button>
-    </div>
 
-    <div id="view-records" class="tab-content active">
-      <div class="summary">
-        <div class="metric"><span>Total Records</span><strong id="recordCount">0</strong></div>
-        <div class="metric"><span>Total Usage</span><strong id="totalUsage">0 Units</strong></div>
-        <div class="metric"><span>Total Amount</span><strong id="totalAmount">TZS 0</strong></div>
+  <a class="nav-link" href="index.html">← Rudi Mwanzo (Home)</a>
+  <h1>📂 Ankara na Records (JSON Storage)</h1>
+  <p style="color: #94a3b8; margin-top:-10px;">Mfumo huu unahifadhi data kwenye file la ndani la server moja kwa moja bila database ya nje.</p>
+
+  <div class="panel">
+    <h3>Weka Ankara Mpya</h3>
+    <form id="recordForm" onsubmit="addRecord(event)">
+      <div class="form-group">
+        <input type="text" id="custName" placeholder="Jina la Mteja" required>
+        <input type="text" id="custPhone" placeholder="Namba ya Simu">
+        <input type="number" id="custAmount" placeholder="Kiasi (TZS)" required>
+        <select id="custStatus">
+          <option value="Pending">Inasubiri</option>
+          <option value="Paid">Imelipwa</option>
+        </select>
       </div>
-      <div id="message" class="message">Loading records...</div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Name</th>
-              <th>Phone</th>
-              <th>Prev (Units)</th>
-              <th>Curr (Units)</th>
-              <th>Usage (Units)</th>
-              <th>Total (TZS)</th>
-              <th>SMS</th>
-            </tr>
-          </thead>
-          <tbody id="recordsBody">
-            <tr><td colspan="8" class="empty">Loading...</td></tr>
-          </tbody>
-        </table>
-      </div>
+      <button type="submit" style="margin-top:15px; width:100%;">Hifadhi Record Mpya</button>
+    </form>
+  </div>
+
+  <div class="panel">
+    <h3>Orodha ya Ankara Zilizopo</h3>
+    <div style="overflow-x: auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>Mteja</th>
+            <th>Namba ya Simu</th>
+            <th>Kiasi</th>
+            <th>Hali (Status)</th>
+            <th>Muda</th>
+            <th>Kitendo</th>
+          </tr>
+        </thead>
+        <tbody id="recordsTableBody">
+          <tr><td colspan="6" style="text-align:center; color:#94a3b8;">Inapakia data...</td></tr>
+        </tbody>
+      </table>
     </div>
-
-    <div id="add-record" class="tab-content">
-      <div class="form-section">
-        <h2 style="margin-top:0;margin-bottom:24px;">➕ Create New Billing Record</h2>
-        <form id="addRecordForm">
-          <div class="form-row">
-            <div class="form-group">
-              <label for="customerName" class="required">Customer Name</label>
-              <input type="text" id="customerName" required placeholder="Enter customer name">
-            </div>
-            <div class="form-group">
-              <label for="phoneNumber">Phone Number (for SMS)</label>
-              <input type="tel" id="phoneNumber" placeholder="e.g., 0712345678">
-              <small style="color:var(--muted);display:block;margin-top:5px;">📱 If provided, SMS will be sent automatically</small>
-            </div>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label for="previousReading" class="required">Previous Reading (Units)</label>
-              <input type="number" id="previousReading" min="0" step="0.1" required placeholder="0">
-            </div>
-            <div class="form-group">
-              <label for="currentReading" class="required">Current Reading (Units)</label>
-              <input type="number" id="currentReading" min="0" step="0.1" required placeholder="0">
-            </div>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label for="ratePerUnit">Rate (TZS per Unit)</label>
-              <input type="number" id="ratePerUnit" min="0" step="1" value="2000">
-            </div>
-            <div class="form-group">
-              <label for="fixedCharge">Fixed Charge (TZS)</label>
-              <input type="number" id="fixedCharge" min="0" step="1" value="0">
-            </div>
-          </div>
-
-          <div class="calculation-display">
-            <div class="calc-item">
-              <div class="calc-label">Usage</div>
-              <div class="calc-value" id="calculatedUsage">0 Units</div>
-            </div>
-            <div class="calc-item">
-              <div class="calc-label">Total Amount</div>
-              <div class="calc-value" id="calculatedTotal">TZS 0</div>
-            </div>
-          </div>
-
-          <div class="sms-option">
-            <label>
-              <input type="checkbox" id="sendSmsCheckbox" checked>
-              <strong>📱 Send SMS to customer after saving</strong>
-            </label>
-            <div id="smsPreview" class="sms-preview" style="display:none;"></div>
-          </div>
-
-          <div class="form-actions">
-            <button type="submit" id="saveBtn" class="btn btn-success">
-              💾 Save Record & Send SMS
-            </button>
-            <button type="button" class="btn btn-secondary" onclick="resetForm()">🗑️ Clear Form</button>
-            <button type="button" class="btn btn-danger" onclick="switchTab('view-records')">❌ Cancel</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </main>
+  </div>
 
   <script>
-    const API_URL = '/api/records';
-    let isOffline = false;
-
-    function updateStatusIndicator(offline) {
-      isOffline = offline;
-      const statusSpan = document.getElementById('connectionStatus');
-      if (offline) {
-        statusSpan.innerText = '⚠️ Working Offline (LocalStorage)';
-        statusSpan.style.background = 'rgba(245, 158, 11, 0.2)';
-        statusSpan.style.color = 'var(--warning)';
-      } else {
-        statusSpan.innerText = '🟢 Connected to Server';
-        statusSpan.style.background = 'rgba(34, 197, 94, 0.2)';
-        statusSpan.style.color = 'var(--success)';
-      }
-    }
-
-    function switchTab(tabId) {
-      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-      document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-      const targetBtn = document.querySelector(`[data-tab="${tabId}"]`);
-      const targetContent = document.getElementById(tabId);
-      if(targetBtn && targetContent) {
-        targetBtn.classList.add('active');
-        targetContent.classList.add('active');
-      }
-      if(tabId === 'add-record') {
-        updateSmsPreview();
-      }
-    }
-
-    document.querySelectorAll('.tab-btn').forEach(button => {
-      button.addEventListener('click', () => switchTab(button.getAttribute('data-tab')));
-    });
-
-    function resetForm() {
-      document.getElementById('addRecordForm').reset();
-      document.getElementById('calculatedUsage').innerText = '0 Units';
-      document.getElementById('calculatedTotal').innerText = 'TZS 0';
-      document.getElementById('previousReading').value = '';
-      document.getElementById('currentReading').value = '';
-      document.getElementById('ratePerUnit').value = '2000';
-      document.getElementById('fixedCharge').value = '0';
-      document.getElementById('sendSmsCheckbox').checked = true;
-      document.getElementById('smsPreview').style.display = 'none';
-    }
-
-    async function logout() {
+    // Kuchukua na kuonyesha data pindi page inapofunguka
+    async function fetchRecords() {
       try {
-        await fetch('/api/logout', { method: 'POST', credentials: 'include' });
-        window.location.href = '/login';
-      } catch(err) {
-        window.location.href = '/login';
-      }
-    }
+        const res = await fetch('/api/records');
+        const result = await res.json();
+        
+        const tbody = document.getElementById('recordsTableBody');
+        tbody.innerHTML = '';
 
-    const prevInput = document.getElementById('previousReading');
-    const currInput = document.getElementById('currentReading');
-    const rateInput = document.getElementById('ratePerUnit');
-    const fixedInput = document.getElementById('fixedCharge');
-
-    function calculateLive() {
-      const prev = parseFloat(prevInput.value) || 0;
-      const curr = parseFloat(currInput.value) || 0;
-      const rate = parseFloat(rateInput.value) || 2000;
-      const fixed = parseFloat(fixedInput.value) || 0;
-      let usage = curr - prev;
-      if (usage < 0) usage = 0;
-      const total = (usage * rate) + fixed;
-      document.getElementById('calculatedUsage').innerText = `${usage.toFixed(1)} Units`;
-      document.getElementById('calculatedTotal').innerText = `TZS ${total.toLocaleString()}`;
-      return { usage, total };
-    }
-
-    function updateSmsPreview() {
-      const name = document.getElementById('customerName').value;
-      const phone = document.getElementById('phoneNumber').value;
-      const prev = parseFloat(prevInput.value) || 0;
-      const curr = parseFloat(currInput.value) || 0;
-      const { usage, total } = calculateLive();
-      const date = new Date().toLocaleDateString('en-GB');
-
-      if(name && (prev > 0 || curr > 0)) {
-        const message = `Ndugu ${name},\n\nBili yako ya maji ya tarehe ${date}:\n\n` +
-                        `✓ Usomaji wa Nyuma: ${prev.toFixed(1)} Units\n` +
-                        `✓ Usomaji wa Sasa: ${curr.toFixed(1)} Units\n` +
-                        `✓ Matumizi Halisi: ${usage.toFixed(1)} Units\n` +
-                        `✓ Jumla ya Bili: TZS ${total.toLocaleString()}\n\n` +
-                        `Asante kwa ushirikiano wako.\n` +
-                        `Water Billing System`;
-
-        const previewDiv = document.getElementById('smsPreview');
-        previewDiv.innerHTML = `<strong>📱 SMS Preview ${phone ? `(to: ${phone})` : '(no phone number)'}:</strong><br>${message.replace(/\n/g, '<br>')}`;
-        previewDiv.style.display = 'block';
-      } else {
-        document.getElementById('smsPreview').style.display = 'none';
-      }
-    }
-
-    [prevInput, currInput, rateInput, fixedInput].forEach(input => {
-      input.addEventListener('input', () => {
-        calculateLive();
-        updateSmsPreview();
-      });
-    });
-
-    document.getElementById('customerName').addEventListener('input', updateSmsPreview);
-    document.getElementById('phoneNumber').addEventListener('input', updateSmsPreview);
-
-    function sendSMS(name, phone, prev, curr, usage, total, date) {
-      return new Promise((resolve) => {
-        if(!phone || phone.trim() === "" || phone === "-") {
-          console.log('No phone number provided');
-          resolve({ success: false, error: 'No phone number' });
+        if (!result.data || result.data.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#94a3b8;">Hakuna record yoyote iliyohifadhiwa bado.</td></tr>`;
           return;
         }
 
-        // Hapa namba sasa zitajiandika zenyewe vizuri bila kuandika maandishi ya code
-        const message = `Ndugu ${name},\n\nBili yako ya maji ya tarehe ${date}:\n\n` +
-                        `✓ Usomaji wa Nyuma: ${parseFloat(prev).toFixed(1)} Units\n` +
-                        `✓ Usomaji wa Sasa: ${parseFloat(curr).toFixed(1)} Units\n` +
-                        `✓ Matumizi Halisi: ${parseFloat(usage).toFixed(1)} Units\n` +
-                        `✓ Jumla ya Bili: TZS ${total.toLocaleString()}\n\n` +
-                        `Asante kwa ushirikiano wako.\n` +
-                        `Water Billing System`;
+        result.data.forEach(rec => {
+          const row = document.createElement('tr');
+          const statusBadge = rec.status === 'Paid' ? '<span class="badge paid">Imelipwa</span>' : '<span class="badge pending">Inasubiri</span>';
+          const dateFormatted = new Date(rec.createdAt).toLocaleString('en-US', { hour12: true });
 
-        const encodedMessage = encodeURIComponent(message);
-        window.open(`sms:${phone}?body=${encodedMessage}`, '_blank');
-        resolve({ success: true, message: 'SMS app opened' });
-      });
+          row.innerHTML = `
+            <td><strong>${rec.name}</strong></td>
+            <td>${rec.phone}</td>
+            <td style="color:#38bdf8; font-weight:bold;">${Number(rec.amount).toLocaleString()} TZS</td>
+            <td>${statusBadge}</td>
+            <td style="font-size:0.85rem; color:#94a3b8;">${dateFormatted}</td>
+            <td><button class="btn-delete" onclick="deleteRecord('${rec.id}')">Futa</button></td>
+          `;
+          tbody.appendChild(row);
+        });
+      } catch (err) {
+        document.getElementById('recordsTableBody').innerHTML = `<tr><td colspan="6" style="text-align:center; color:#ef4444;">Imeshindwa kuunganisha na Server!</td></tr>`;
+      }
     }
 
-    async function fetchRecords() {
-      const tbody = document.getElementById('recordsBody');
-      let records = [];
+    // Kuongeza record mpya
+    async function addRecord(event) {
+      event.preventDefault();
+      
+      const name = document.getElementById('custName').value;
+      const phone = document.getElementById('custPhone').value;
+      const amount = document.getElementById('custAmount').value;
+      const status = document.getElementById('custStatus').value;
+
+      // Kuchukua device metrics za browser kwa ushirikiano
+      const deviceMetrics = {
+        platform: navigator.platform,
+        userAgent: navigator.userAgent,
+        screenSize: `${window.innerWidth}x${window.innerHeight}`
+      };
 
       try {
-        const response = await fetch(API_URL, { credentials: 'include' });
-        if (!response.ok) throw new Error('Failed to fetch');
-        records = await response.json();
-        updateStatusIndicator(false);
-      } catch (error) {
-        console.warn('Server haipatikani, tunasoma kutoka LocalStorage...', error);
-        updateStatusIndicator(true);
-        const localData = localStorage.getItem('water_records');
-        records = localData ? JSON.parse(localData) : [];
-      }
-
-      tbody.innerHTML = '';
-      if (records.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" class="empty">No records found. Click "Add Record" to create one.</td></tr>`;
-        updateSummary(0, 0, 0);
-        return;
-      }
-
-      let totalUsage = 0, totalAmount = 0;
-      records.forEach((rec, index) => {
-        totalUsage += rec.usage;
-        totalAmount += rec.total;
-        const row = document.createElement('tr');
-        row.innerHTML = `
-          <td>${rec.date || '-'}</td>
-          <td><strong>${rec.name}</strong></td>
-          <td>${rec.phone || '-'}</td>
-          <td>${rec.prev}</td>
-          <td>${rec.curr}</td>
-          <td>${rec.usage.toFixed(1)} Units</td>
-          <td>TZS ${rec.total.toLocaleString()}</td>
-          <td><button class="btn-sms" onclick="resendSMS('${rec.name}', '${rec.phone}', ${rec.prev}, ${rec.curr}, ${rec.usage}, ${rec.total}, '${rec.date}')">📱 Resend SMS</button></td>
-        `;
-        tbody.appendChild(row);
-      });
-      updateSummary(records.length, totalUsage, totalAmount);
-    }
-
-    function resendSMS(name, phone, prev, curr, usage, total, date) {
-      if(!phone || phone === '-') {
-        showMessage('No phone number available for this customer!', 'warning');
-        return;
-      }
-      sendSMS(name, phone, prev, curr, usage, total, date);
-      showMessage(`📱 Opening SMS app for ${name}...`, 'success');
-    }
-
-    function updateSummary(count, usage, amount) {
-      document.getElementById('recordCount').innerText = count;
-      document.getElementById('totalUsage').innerText = `${usage.toFixed(1)} Units`;
-      document.getElementById('totalAmount').innerText = `TZS ${amount.toLocaleString()}`;
-    }
-
-    function showMessage(msg, type = 'success') {
-      const msgDiv = document.getElementById('message');
-      msgDiv.className = `message ${type}`;
-      msgDiv.innerText = msg;
-      msgDiv.style.display = 'block';
-      setTimeout(() => msgDiv.style.display = 'none', 4000);
-    }
-
-    document.getElementById('addRecordForm').addEventListener('submit', async function(e) {
-      e.preventDefault();
-      const name = document.getElementById('customerName').value;
-      const phone = document.getElementById('phoneNumber').value;
-      const prev = parseFloat(prevInput.value) || 0;
-      const curr = parseFloat(currInput.value) || 0;
-      const sendSms = document.getElementById('sendSmsCheckbox').checked;
-      const saveBtn = document.getElementById('saveBtn');
-
-      if (!name) {
-        alert('❌ Please enter customer name');
-        return;
-      }
-      if (curr < prev) {
-        alert('❌ Current reading cannot be less than previous reading!');
-        return;
-      }
-
-      const { usage, total } = calculateLive();
-      const today = new Date().toLocaleDateString('en-GB');
-      const payload = { id: Date.now(), date: today, name, phone: phone || '-', prev, curr, usage, total };
-
-      saveBtn.disabled = true;
-      saveBtn.innerText = "💾 Saving...";
-
-      try {
-        const response = await fetch(API_URL, {
+        const res = await fetch('/api/records', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-          credentials: 'include'
+          body: JSON.stringify({ name, phone, amount, status, deviceMetrics })
         });
-
-        if (response.ok) {
-          showMessage(`✅ Record saved to MongoDB for ${name}!`, 'success');
-          updateStatusIndicator(false);
+        
+        const result = await res.json();
+        if (result.success) {
+          document.getElementById('recordForm').reset();
+          fetchRecords(); // Refresh table
         } else {
-          throw new Error('Server returned error response');
+          alert("Error: " + result.error);
         }
-      } catch (error) {
-        console.error('Server failed, saving to LocalStorage...', error);
-        updateStatusIndicator(true);
-
-        const localData = localStorage.getItem('water_records');
-        const currentRecords = localData ? JSON.parse(localData) : [];
-        currentRecords.push(payload);
-        localStorage.setItem('water_records', JSON.stringify(currentRecords));
-
-        showMessage(`⚠️ Server offline! Record saved locally for ${name}.`, 'warning');
+      } catch (err) {
+        alert("Imeshindwa kuhifadhi record. Hakikisha server ipo hewani.");
       }
+    }
 
-      if (sendSms && phone && phone !== '-') {
-        await sendSMS(name, phone, prev, curr, usage, total, today);
+    // Kufuta record
+    async function deleteRecord(id) {
+      if (!confirm("Je, una uhakika unataka kufuta kabisa ankara hii?")) return;
+
+      try {
+        const res = await fetch(`/api/records/${id}`, { method: 'DELETE' });
+        const result = await res.json();
+        if (result.success) {
+          fetchRecords(); // Refresh table
+        } else {
+          alert("Error: " + result.error);
+        }
+      } catch (err) {
+        alert("Imeshindwa kufuta.");
       }
+    }
 
-      resetForm();
-      await fetchRecords();
-      switchTab('view-records');
-      saveBtn.disabled = false;
-      saveBtn.innerText = "💾 Save Record & Send SMS";
-    });
-
-    document.getElementById('refreshBtn').addEventListener('click', fetchRecords);
+    // Run tunapofungua ukurasa
     window.onload = fetchRecords;
   </script>
 </body>
