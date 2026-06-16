@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign Up | Mickey Water</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { min-height: 100vh; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: grid; place-items: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #102a43; }
+    .card { width: min(520px, 100%); background: #fff; border-radius: 28px; padding: 36px 32px; box-shadow: 0 30px 80px rgba(15, 23, 42, 0.18); }
+    .card h1 { font-size: 2rem; margin-bottom: 12px; color: #0f172a; }
+    .card p { color: #475569; margin-bottom: 22px; line-height: 1.75; }
+    .field { margin-bottom: 16px; }
+    .field label { display: block; margin-bottom: 8px; font-weight: 700; color: #334155; }
+    .field input { width: 100%; padding: 14px 16px; border-radius: 16px; border: 1px solid #cbd5e1; font-size: 1rem; }
+    .button { width: 100%; padding: 15px 16px; border-radius: 16px; border: none; color: white; background: #10b981; font-weight: 700; font-size: 1rem; cursor: pointer; }
+    .button:hover { transform: translateY(-1px); box-shadow: 0 16px 30px rgba(16, 185, 129, 0.24); }
+    .links { margin-top: 18px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+    .links a { color: #2563eb; text-decoration: none; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <section class="card">
+    <h1>Create account</h1>
+    <p>Sign up to manage water bills, view receipts, and access your customer dashboard.</p>
+    <form id="signupForm">
+      <div class="field"><label for="fullname">Full name</label><input id="fullname" type="text" placeholder="John Doe" required></div>
+      <div class="field"><label for="email">Email</label><input id="email" type="email" placeholder="you@example.com" required></div>
+      <div class="field"><label for="phone">Phone</label><input id="phone" type="tel" placeholder="0712345678" required></div>
+      <div class="field"><label for="account">Account number</label><input id="account" type="text" placeholder="ACC-12345" required></div>
+      <div class="field"><label for="password">Password</label><input id="password" type="password" placeholder="••••••••" required></div>
+      <div class="field"><label for="confirmPassword">Confirm password</label><input id="confirmPassword" type="password" placeholder="••••••••" required></div>
+      <button class="button" type="submit">Create account</button>
+    </form>
+    <div class="links">
+      <a href="/login">Already have an account?</a>
+    </div>
+  </section>
+  <script>
+    document.getElementById('signupForm').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const fullname = document.getElementById('fullname').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const phone = document.getElementById('phone').value.trim();
+      const account_number = document.getElementById('account').value.trim();
+      const password = document.getElementById('password').value;
+      const confirmPassword = document.getElementById('confirmPassword').value;
+      if (password !== confirmPassword) return alert('Passwords do not match');
+      const response = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fullname, email, phone, account_number, password })
+      });
+      const result = await response.json();
+      if (!response.ok) return alert(result.error || 'Signup failed');
+      alert(result.message || 'Account created successfully');
+      window.location.href = '/login';
+    });
+  </script>
+</body>
+</html>

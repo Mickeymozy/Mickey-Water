@@ -24,12 +24,20 @@
       "dest": "signup.html"
     },
     {
+      "src": "/reset-password",
+      "dest": "reset-password.html"
+    },
+    {
       "src": "/records",
-      "dest": "server.js"
+      "dest": "records.html"
+    },
+    {
+      "src": "/dashboard",
+      "dest": "dashboard.html"
     },
     {
       "src": "/admin",
-      "dest": "server.js"
+      "dest": "admin-dashboard.html"
     },
     {
       "src": "/(.*)",

@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard | Mickey Water</title>
+  <style>
+    * { box-sizing: border-box; margin:0; padding:0; }
+    body { min-height:100vh; font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background:#f8fafc; color:#0f172a; }
+    .shell { max-width:1160px; margin:0 auto; padding:28px; }
+    header { display:flex; justify-content:space-between; flex-wrap:wrap; align-items:center; margin-bottom:28px; gap:16px; }
+    header h1 { font-size:2rem; }
+    .actions { display:flex; gap:12px; flex-wrap:wrap; }
+    .button { border:none; border-radius:16px; padding:12px 18px; font-weight:700; cursor:pointer; }
+    .button.primary { background:#2563eb; color:white; }
+    .button.secondary { background:#e2e8f0; color:#0f172a; }
+    .grid { display:grid; gap:20px; margin-bottom:28px; grid-template-columns: repeat(auto-fit,minmax(240px,1fr)); }
+    .card { background:white; border-radius:24px; padding:24px; box-shadow:0 25px 60px rgba(15,23,42,0.08); }
+    .card h2 { font-size:1rem; color:#64748b; margin-bottom:14px; }
+    .card strong { display:block; font-size:2rem; color:#0f172a; }
+    .section { background:white; border-radius:24px; padding:24px; box-shadow:0 25px 60px rgba(15,23,42,0.08); margin-bottom:24px; }
+    table { width:100%; border-collapse:collapse; margin-top:16px; }
+    th, td { padding:14px 16px; text-align:left; border-bottom:1px solid #e2e8f0; }
+    th { background:#f8fafc; color:#475569; }
+    tr:last-child td { border-bottom:none; }
+    .pill { display:inline-flex; padding:8px 12px; border-radius:999px; font-size:0.8rem; font-weight:700; }
+    .pill.active { background:#dcfce7; color:#15803d; }
+    .pill.suspended { background:#fee2e2; color:#b91c1c; }
+    .form-grid { display:grid; gap:16px; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); }
+    .field { display:flex; flex-direction:column; gap:8px; }
+    .field label { font-weight:700; color:#334155; }
+    .field input, .field select { padding:12px 14px; border-radius:14px; border:1px solid #cbd5e1; }
+    .small-note { color:#475569; font-size:0.95rem; margin-top:10px; }
+    .empty { padding:24px; text-align:center; color:#64748b; }
+    @media(max-width:720px){ header{flex-direction:column;align-items:flex-start;} }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <div>
+        <h1>Admin Dashboard</h1>
+        <p id="adminInfo" style="color:#475569; margin-top:8px;"></p>
+      </div>
+      <div class="actions">
+        <button class="button secondary" onclick="logout()">Logout</button>
+      </div>
+    </header>
+
+    <div class="grid">
+      <div class="card"><h2>Total customers</h2><strong id="customerCount">0</strong></div>
+      <div class="card"><h2>Total revenue</h2><strong id="totalRevenue">TZS 0</strong></div>
+      <div class="card"><h2>Pending bills</h2><strong id="pendingBills">0</strong></div>
+    </div>
+
+    <section class="section">
+      <h2>Quick bill creation</h2>
+      <div class="form-grid">
+        <div class="field"><label for="userSelect">Customer</label><select id="userSelect"></select></div>
+        <div class="field"><label for="prevReading">Previous reading</label><input id="prevReading" type="number" value="0"></div>
+        <div class="field"><label for="currentReading">Current reading</label><input id="currentReading" type="number" value="0"></div>
+        <div class="field"><label for="ratePerUnit">Rate per unit</label><input id="ratePerUnit" type="number" value="50"></div>
+      </div>
+      <button class="button primary" style="margin-top:20px;" onclick="createBill()">Create bill</button>
+      <p class="small-note">Select a customer and enter meter readings to create a new water bill.</p>
+    </section>
+
+    <section class="section">
+      <h2>Customer accounts</h2>
+      <table>
+        <thead><tr><th>Name</th><th>Email</th><th>Account</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody id="userTable"></tbody>
+      </table>
+      <div id="userEmpty" class="empty">No customers found.</div>
+    </section>
+
+    <section class="section">
+      <h2>Recent system analytics</h2>
+      <div id="activityList"></div>
+      <div id="activityEmpty" class="empty">No analytics available.</div>
+    </section>
+  </div>
+  <script>
+    const token = localStorage.getItem('token');
+    const user = JSON.parse(localStorage.getItem('user') || 'null');
+    if (!token || !user || user.user_type !== 'admin') return window.location.href = '/login';
+    document.getElementById('adminInfo').textContent = `Signed in as ${user.email}`;
+
+    async function fetchAdminData() {
+      const headers = { Authorization: `Bearer ${token}` };
+      const [usersRes, analyticsRes] = await Promise.all([
+        fetch('/api/admin/users', { headers }),
+        fetch('/api/admin/analytics', { headers })
+      ]);
+      if (!usersRes.ok || !analyticsRes.ok) return logout();
+      const users = await usersRes.json();
+      const analytics = await analyticsRes.json();
+      document.getElementById('customerCount').textContent = users.length;
+      document.getElementById('totalRevenue').textContent = `TZS ${analytics.totalRevenue.toLocaleString()}`;
+      document.getElementById('pendingBills').textContent = analytics.pendingBills;
+      renderUsers(users);
+      renderAnalytics(analytics.recentActivities);
+      populateUserSelect(users);
+    }
+
+    function renderUsers(users) {
+      const tbody = document.getElementById('userTable');
+      const empty = document.getElementById('userEmpty');
+      if (!users.length) { tbody.innerHTML = ''; empty.style.display = 'block'; return; }
+      empty.style.display = 'none';
+      tbody.innerHTML = users.map(user => `
+        <tr>
+          <td>${user.fullname}</td>
+          <td>${user.email}</td>
+          <td>${user.account_number}</td>
+          <td><span class="pill ${user.status === 'active' ? 'active' : 'suspended'}">${user.status}</span></td>
+          <td><button class="button secondary" style="font-size:0.85rem;" onclick="updateStatus('${user.id}', '${user.status === 'active' ? 'suspended' : 'active'}')">${user.status === 'active' ? 'Suspend' : 'Activate'}</button></td>
+        </tr>
+      `).join('');
+    }
+
+    function renderAnalytics(events) {
+      const container = document.getElementById('activityList');
+      const empty = document.getElementById('activityEmpty');
+      if (!events.length) { container.innerHTML = ''; empty.style.display = 'block'; return; }
+      empty.style.display = 'none';
+      container.innerHTML = events.slice(0, 8).map(event => `
+        <div class="card" style="margin-bottom:14px;">
+          <strong style="display:block; margin-bottom:6px;">${event.event_type.replace(/_/g,' ')}</strong>
+          <div style="color:#475569; font-size:0.95rem;">${new Date(event.created_at).toLocaleString()}</div>
+          <div style="margin-top:10px; color:#334155;">${event.event_data ? JSON.stringify(JSON.parse(event.event_data)) : 'No details'}</div>
+        </div>
+      `).join('');
+    }
+
+    function populateUserSelect(users) {
+      const select = document.getElementById('userSelect');
+      select.innerHTML = users.map(user => `<option value="${user.id}">${user.fullname} • ${user.account_number}</option>`).join('');
+    }
+
+    async function createBill() {
+      const userId = document.getElementById('userSelect').value;
+      const previousReading = parseFloat(document.getElementById('prevReading').value);
+      const currentReading = parseFloat(document.getElementById('currentReading').value);
+      const ratePerUnit = parseFloat(document.getElementById('ratePerUnit').value);
+      if (!userId || currentReading < previousReading) return alert('Please choose a customer and enter valid readings.');
+      const response = await fetch('/api/admin/bills', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ userId, previousReading, currentReading, ratePerUnit })
+      });
+      const result = await response.json();
+      if (!response.ok) return alert(result.error || 'Failed to create bill');
+      alert(result.message || 'Bill created successfully');
+      fetchAdminData();
+    }
+
+    async function updateStatus(userId, status) {
+      const response = await fetch(`/api/admin/users/${userId}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ status })
+      });
+      const result = await response.json();
+      if (!response.ok) return alert(result.error || 'Failed to update status');
+      alert(result.message || 'Status updated');
+      fetchAdminData();
+    }
+
+    function logout() {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/login';
+    }
+
+    fetchAdminData();
+  </script>
+</body>
+</html>
