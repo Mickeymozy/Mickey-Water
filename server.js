@@ -356,6 +356,10 @@ app.get('/records', (req, res) => {
   res.sendFile(path.join(__dirname, 'records.html'));
 });
 
+app.get('/records.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'records.html'));
+});
+
 app.get('/:page.html', (req, res) => {
   const target = path.join(__dirname, `${req.params.page}.html`);
   if (fs.existsSync(target)) return res.sendFile(target);

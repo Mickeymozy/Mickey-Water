@@ -32,6 +32,10 @@
       "dest": "records.html"
     },
     {
+      "src": "/records.html",
+      "dest": "records.html"
+    },
+    {
       "src": "/dashboard",
       "dest": "dashboard.html"
     },
