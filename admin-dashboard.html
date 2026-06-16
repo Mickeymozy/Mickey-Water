@@ -83,7 +83,7 @@
   <script>
     const token = localStorage.getItem('token');
     const user = JSON.parse(localStorage.getItem('user') || 'null');
-    if (!token || !user || user.user_type !== 'admin') return window.location.href = '/login';
+    if (!token || !user || user.user_type !== 'admin') return window.location.href = 'login.html';
     document.getElementById('adminInfo').textContent = `Signed in as ${user.email}`;
 
     async function fetchAdminData() {
@@ -170,7 +170,7 @@
     function logout() {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      window.location.href = '/login';
+      window.location.href = 'login.html';
     }
 
     fetchAdminData();

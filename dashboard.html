@@ -60,7 +60,7 @@
   <script>
     const token = localStorage.getItem('token');
     const user = JSON.parse(localStorage.getItem('user') || 'null');
-    if (!token || !user) return window.location.href = '/login';
+    if (!token || !user) return window.location.href = 'login.html';
     document.getElementById('welcomeText').textContent = `Welcome, ${user.fullname || user.email}`;
 
     async function loadBills() {
@@ -75,7 +75,7 @@
         document.getElementById('outstanding').textContent = `TZS ${outstanding.toLocaleString()}`;
         renderBills(bills);
       } catch (error) {
-        window.location.href = '/login';
+        window.location.href = 'login.html';
       }
     }
 
@@ -102,7 +102,7 @@
     function logout() {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      window.location.href = '/login';
+      window.location.href = 'login.html';
     }
 
     loadBills();

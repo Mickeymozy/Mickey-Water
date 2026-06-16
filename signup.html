@@ -33,7 +33,7 @@
       <button class="button" type="submit">Create account</button>
     </form>
     <div class="links">
-      <a href="/login">Already have an account?</a>
+      <a href="login.html">Already have an account?</a>
     </div>
   </section>
   <script>
@@ -46,15 +46,19 @@
       const password = document.getElementById('password').value;
       const confirmPassword = document.getElementById('confirmPassword').value;
       if (password !== confirmPassword) return alert('Passwords do not match');
-      const response = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fullname, email, phone, account_number, password })
-      });
-      const result = await response.json();
-      if (!response.ok) return alert(result.error || 'Signup failed');
-      alert(result.message || 'Account created successfully');
-      window.location.href = '/login';
+      try {
+        const response = await fetch('/api/auth/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fullname, email, phone, account_number, password })
+        });
+        const result = await response.json();
+        if (!response.ok) return alert(result.error || 'Signup failed. Please try again.');
+        alert(result.message || 'Account created successfully');
+        window.location.href = 'login.html';
+      } catch (error) {
+        alert('Unable to connect to the server. Start the app with npm start and open it at http://localhost:3000');
+      }
     });
   </script>
 </body>

@@ -36,8 +36,8 @@
       <button class="button" type="submit">Login</button>
     </form>
     <div class="links">
-      <a href="/signup">Create account</a>
-      <a href="/reset-password">Forgot password?</a>
+      <a href="signup.html">Create account</a>
+      <a href="reset-password.html">Forgot password?</a>
     </div>
     <div class="notice">Admin email: <strong>mickidadyhamza@gmail.com</strong></div>
   </section>
@@ -47,21 +47,25 @@
       event.preventDefault();
       const email = document.getElementById('email').value.trim();
       const password = document.getElementById('password').value.trim();
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-      const result = await response.json();
-      if (!response.ok) {
-        return alert(result.error || 'Login failed.');
-      }
-      localStorage.setItem('token', result.token);
-      localStorage.setItem('user', JSON.stringify(result.user));
-      if (result.user.user_type === 'admin') {
-        window.location.href = '/admin';
-      } else {
-        window.location.href = '/dashboard';
+      try {
+        const response = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const result = await response.json();
+        if (!response.ok) {
+          return alert(result.error || 'Login failed. Please check your credentials.');
+        }
+        localStorage.setItem('token', result.token);
+        localStorage.setItem('user', JSON.stringify(result.user));
+        if (result.user.user_type === 'admin') {
+          window.location.href = '/admin';
+        } else {
+          window.location.href = '/dashboard';
+        }
+      } catch (error) {
+        alert('Unable to connect to the server. Start the app with npm start and open it at http://localhost:3000');
       }
     });
   </script>
