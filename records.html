@@ -9,9 +9,11 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; color: #102a43; }
     .page-shell { max-width: 1200px; margin: 0 auto; padding: 30px 20px; }
-    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 30px; background: rgba(255,255,255,0.12); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.18); border-radius: 26px; padding: 22px 28px; color: white; }
-    .topbar h1 { font-size: clamp(1.8rem, 2.5vw, 2.8rem); margin-bottom: 8px; }
-    .topbar p { color: rgba(255,255,255,0.88); max-width: 500px; }
+    .container { max-width: 1180px; margin: 0 auto; padding: 30px 20px 40px; }
+    .header { display: flex; flex-direction: column; gap: 14px; margin-bottom: 30px; color: white; }
+    .header h1 { font-size: clamp(2rem, 3vw, 2.8rem); margin-bottom: 6px; }
+    .header p { color: rgba(255,255,255,0.88); max-width: 760px; line-height: 1.7; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; background: rgba(255,255,255,0.12); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.18); border-radius: 26px; padding: 22px 28px; color: white; }
     .nav-links { display: flex; gap: 12px; flex-wrap: wrap; }
     .nav-btn { padding: 12px 20px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.18); background: rgba(255,255,255,0.08); color: white; text-decoration: none; font-weight: 700; display: inline-flex; align-items: center; gap: 10px; }
     .nav-btn:hover { background: rgba(255,255,255,0.18); }
@@ -19,61 +21,79 @@
     .stat-card { background: white; border-radius: 24px; padding: 24px 22px; box-shadow: 0 30px 60px rgba(2, 12, 27, 0.18); }
     .stat-card span.label { display: block; font-size: 0.8rem; font-weight: 700; color: #64748b; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.05em; }
     .stat-card span.value { display: block; font-size: 2rem; font-weight: 800; color: #0f172a; }
+    .tab-buttons { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 28px; }
+    .tab-btn { background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.18); border-radius: 999px; padding: 12px 18px; cursor: pointer; font-weight: 700; }
+    .tab-btn.active { background: white; color: #0f172a; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .btn-send { width: 100%; border: none; border-radius: 18px; padding: 16px 22px; background: #2563eb; color: white; font-weight: 800; font-size: 1rem; cursor: pointer; transition: transform 0.2s ease, box-shadow 0.2s ease; }
+    .btn-send:hover { transform: translateY(-1px); box-shadow: 0 16px 40px rgba(37,99,235,0.25); }
     .section { background: white; border-radius: 28px; padding: 24px; box-shadow: 0 30px 70px rgba(2, 12, 27, 0.14); margin-bottom: 30px; }
-    .section-header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 22px; }
-    .section-header h2 { font-size: 1.4rem; margin: 0; }
+    .section h2 { font-size: 1.4rem; margin-bottom: 18px; }
     .filter-row { display: grid; grid-template-columns: repeat(auto-fit,minmax(180px,1fr)); gap: 15px; width: 100%; }
     .filter-row input, .filter-row select { width: 100%; padding: 14px 16px; border-radius: 16px; border: 1px solid #e2e8f0; font-size: 0.95rem; }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    thead tr { background: #f8fafc; }
-    th, td { padding: 16px 14px; text-align: left; border-bottom: 1px solid #e2e8f0; font-size: 0.95rem; }
-    tbody tr:hover { background: #f1f5f9; }
-    .badge { display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; padding: 8px 14px; font-weight: 700; font-size: 0.8rem; }
-    .badge.pending { background: rgba(250, 204, 21, 0.15); color: #b45309; }
-    .badge.partially_paid { background: rgba(59, 130, 246, 0.12); color: #1d4ed8; }
-    .badge.paid { background: rgba(16, 185, 129, 0.15); color: #047857; }
-    .btn { border: none; border-radius: 999px; padding: 10px 18px; cursor: pointer; font-weight: 700; }
-    .btn-primary { background: #2563eb; color: white; }
-    .btn-secondary { background: #e2e8f0; color: #0f172a; }
-    .btn-small { font-size: 0.85rem; padding: 8px 14px; }
-    .modal { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px); z-index: 50; align-items: center; justify-content: center; padding: 20px; }
-    .modal.show { display: flex; }
-    .modal-card { background: white; border-radius: 24px; width: min(520px,100%); padding: 28px; box-shadow: 0 30px 90px rgba(15, 23, 42, 0.18); position: relative; }
-    .modal-card h3 { font-size: 1.4rem; margin-bottom: 18px; }
-    .modal-close { position: absolute; top: 18px; right: 18px; width: 36px; height: 36px; border-radius: 999px; border: none; background: #f8fafc; cursor: pointer; font-size: 1.2rem; }
+    .form-section { display: grid; gap: 24px; }
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); gap: 18px; }
+    .form-group { display: flex; flex-direction: column; gap: 10px; }
+    .form-group.full-width { grid-column: span 2; }
+    .form-group label { color: #102a43; font-weight: 700; }
+    .form-group input, .form-group select { width: 100%; padding: 14px 16px; border-radius: 18px; border: 1px solid #cbd5e1; font-size: 0.95rem; }
+    .preview-box { border: 1px solid #e2e8f0; border-radius: 22px; padding: 20px; background: #f8fafc; }
+    .preview-box h3 { margin-bottom: 14px; }
+    .sms-preview { white-space: pre-wrap; background: #ffffff; border-radius: 18px; padding: 18px; color: #334155; line-height: 1.6; min-height: 160px; }
+    .record-item { background: rgba(255,255,255,0.95); border-radius: 22px; padding: 22px; box-shadow: 0 20px 50px rgba(2,12,27,0.12); margin-bottom: 18px; }
+    .record-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+    .record-name { font-weight: 700; color: #0f172a; }
+    .record-status { padding: 8px 14px; border-radius: 999px; font-weight: 700; font-size: 0.85rem; }
+    .record-status.status-paid { background: #dcfce7; color: #047857; }
+    .record-status.status-unpaid { background: #fef9c3; color: #b45309; }
+    .record-details { display: grid; grid-template-columns: repeat(auto-fit,minmax(140px,1fr)); gap: 12px; color: #475569; font-size: 0.95rem; }
+    .record-details span { background: #f8fafc; border-radius: 16px; padding: 12px 14px; display: inline-flex; }
+    .delete-btn { border: none; border-radius: 999px; padding: 10px 16px; background: #ef4444; color: white; cursor: pointer; font-weight: 700; }
+    .toast-message { position: fixed; right: 20px; bottom: 20px; background: #16a34a; color: white; padding: 14px 18px; border-radius: 18px; box-shadow: 0 16px 40px rgba(15,23,42,0.25); z-index: 9999; }
     .empty-state { text-align: center; padding: 40px; color: #64748b; }
     .empty-state i { font-size: 48px; margin-bottom: 10px; display: block; }
     @media (max-width: 900px) { .topbar { flex-direction: column; align-items: stretch; } .stats-grid { grid-template-columns: 1fr; } .section-header { flex-direction: column; align-items: stretch; } }
   </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>💧 Mfumo wa Bili ya Maji</h1>
-            <p>Undaa ankara na utume SMS kwa mteja</p>
-        </div>
+  <header class="site-header">
+    <div class="site-brand">💧 Mickey Water Records</div>
+    <nav class="site-nav">
+      <a href="index.html">Home</a>
+      <a href="login.html">Login</a>
+      <a href="signup.html">Sign Up</a>
+      <a href="dashboard.html">Dashboard</a>
+      <a href="admin-dashboard.html">Admin</a>
+    </nav>
+  </header>
 
-        <div class="stats-bar" id="statsBar">
-            <div class="stat-card">
-                <div class="stat-number" id="totalCustomers">0</div>
-                <div class="stat-label">Wateja Waliohifadhiwa</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number" id="totalRevenue">0</div>
-                <div class="stat-label">Jumla ya Mapato (TZS)</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number" id="unpaidCount">0</div>
-                <div class="stat-label">Bili Ambazo Hazijalipwa</div>
-            </div>
-        </div>
+  <main class="container">
+    <section class="topbar">
+      <div>
+        <h1>Rekodi za Ankara na Mapato</h1>
+        <p>Hifadhi ankara, tuma SMS, na tafuta rekodi kwa wateja kwa njia rahisi na salama.</p>
+      </div>
+      <div class="nav-links">
+        <a class="nav-btn" href="dashboard.html">Customer Dashboard</a>
+        <a class="nav-btn" href="admin-dashboard.html">Admin Dashboard</a>
+        <a class="nav-btn" href="login.html">Login</a>
+      </div>
+    </section>
 
-        <div class="tab-buttons">
-            <button class="tab-btn active" onclick="switchTab('form')">➕ Unda Ankara</button>
-            <button class="tab-btn" onclick="switchTab('records')">📋 Rekodi Zilizohifadhiwa</button>
-        </div>
+    <section class="stats-grid">
+      <div class="stat-card"><span class="label">Wateja Waliohifadhiwa</span><span class="value" id="totalCustomers">0</span></div>
+      <div class="stat-card"><span class="label">Jumla ya Mapato</span><span class="value" id="totalRevenue">0</span></div>
+      <div class="stat-card"><span class="label">Bili Hazijalipwa</span><span class="value" id="unpaidCount">0</span></div>
+    </section>
 
-        <!-- Form Tab -->
+    <section class="section">
+      <div class="tab-buttons">
+        <button class="tab-btn active" onclick="switchTab('form')">➕ Unda Ankara</button>
+        <button class="tab-btn" onclick="switchTab('records')">📋 Rekodi Zilizohifadhiwa</button>
+      </div>
+
+      <!-- Form Tab -->
         <div id="formTab" class="tab-content active">
             <div class="form-section">
                 <form id="billForm">

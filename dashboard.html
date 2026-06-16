@@ -5,49 +5,63 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dashboard | Mickey Water</title>
   <style>
-    * { box-sizing: border-box; margin:0; padding:0; }
-    body { min-height:100vh; font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background:#f8fafc; color:#0f172a; }
-    .shell { max-width:1140px; margin:0 auto; padding:28px; }
-    header { display:flex; justify-content:space-between; flex-wrap:wrap; gap:18px; align-items:center; margin-bottom:28px; }
-    header h1 { font-size:2rem; }
-    header .actions { display:flex; gap:12px; flex-wrap:wrap; }
-    .button { display:inline-flex; align-items:center; justify-content:center; gap:10px; border:none; border-radius:16px; padding:12px 18px; cursor:pointer; font-weight:700; }
-    .button.primary { background:#2563eb; color:white; }
-    .button.secondary { background:#e2e8f0; color:#0f172a; }
-    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:20px; margin-bottom:30px; }
-    .card { background:white; border-radius:24px; padding:24px; box-shadow:0 25px 60px rgba(15,23,42,0.08); }
-    .card h2 { font-size:1rem; color:#64748b; margin-bottom:14px; }
-    .card strong { display:block; font-size:2rem; color:#0f172a; }
-    table { width:100%; border-collapse:collapse; background:white; border-radius:24px; overflow:hidden; box-shadow:0 25px 60px rgba(15,23,42,0.08); }
-    th, td { padding:16px 18px; text-align:left; border-bottom:1px solid #e2e8f0; }
-    th { background:#f8fafc; color:#475569; font-size:0.95rem; }
-    tr:last-child td { border-bottom:none; }
-    .status { display:inline-flex; align-items:center; padding:8px 12px; border-radius:999px; font-size:0.8rem; font-weight:700; }
-    .status.paid { background:#d1fae5; color:#047857; }
-    .status.pending { background:#fef9c3; color:#92400e; }
-    .empty { padding:32px; text-align:center; color:#64748b; }
-    @media(max-width:720px){ header{flex-direction:column;align-items:flex-start;} }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { min-height: 100vh; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f8fafc; color: #0f172a; }
+    .site-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; padding: 24px; background: #ffffff; box-shadow: 0 10px 30px rgba(15,23,42,0.08); }
+    .site-brand { font-size: 1.25rem; font-weight: 800; }
+    .nav-links { display: flex; gap: 14px; flex-wrap: wrap; }
+    .nav-links a, .nav-links button { text-decoration: none; color: #334155; font-weight: 700; background: transparent; border: none; cursor: pointer; padding: 10px 14px; border-radius: 14px; }
+    .nav-links a:hover, .nav-links button:hover { background: #eef2ff; }
+    .page-shell { max-width: 1180px; margin: 24px auto; padding: 0 24px 32px; }
+    .hero { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 24px; align-items: center; margin-bottom: 28px; }
+    .hero-title { max-width: 640px; }
+    .hero h1 { font-size: clamp(2rem, 3vw, 2.6rem); }
+    .hero p { color: #475569; line-height: 1.7; margin-top: 10px; }
+    .button.primary { background: #2563eb; color: white; }
+    .button.secondary { background: #e2e8f0; color: #0f172a; }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); gap: 20px; margin-bottom: 32px; }
+    .stat-card { background: white; border-radius: 24px; padding: 24px; box-shadow: 0 25px 60px rgba(15,23,42,0.08); }
+    .stat-card h2 { font-size: 1rem; color: #64748b; margin-bottom: 14px; }
+    .stat-card strong { display: block; font-size: 2rem; color: #0f172a; }
+    .content-card { background: white; border-radius: 24px; padding: 24px; box-shadow: 0 25px 60px rgba(15,23,42,0.08); }
+    table { width: 100%; border-collapse: collapse; border-radius: 24px; overflow: hidden; }
+    th, td { padding: 16px 18px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+    th { background: #f8fafc; color: #475569; font-size: 0.95rem; }
+    tr:last-child td { border-bottom: none; }
+    .status { display: inline-flex; align-items: center; padding: 8px 12px; border-radius: 999px; font-size: 0.8rem; font-weight: 700; }
+    .status.paid { background: #d1fae5; color: #047857; }
+    .status.pending { background: #fef9c3; color: #92400e; }
+    .empty { padding: 32px; text-align: center; color: #64748b; }
+    @media (max-width: 760px) { .hero { flex-direction: column; } }
   </style>
 </head>
 <body>
-  <div class="shell">
-    <header>
-      <div>
+  <header class="site-header">
+    <div class="site-brand">💧 Mickey Water</div>
+    <nav class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="records.html">Records</a>
+      <button type="button" onclick="logout()">Logout</button>
+    </nav>
+  </header>
+
+  <main class="page-shell">
+    <section class="hero">
+      <div class="hero-title">
         <h1>Customer Dashboard</h1>
-        <p id="welcomeText" style="color:#475569; margin-top:8px;"></p>
+        <p id="welcomeText">Loading account details...</p>
       </div>
-      <div class="actions">
-        <button class="button secondary" onclick="logout()">Logout</button>
-      </div>
-    </header>
+      <button class="button secondary" onclick="logout()">Logout</button>
+    </section>
 
-    <div class="grid">
-      <div class="card"><h2>Total Bills</h2><strong id="billCount">0</strong></div>
-      <div class="card"><h2>Total Paid</h2><strong id="totalPaid">TZS 0</strong></div>
-      <div class="card"><h2>Outstanding</h2><strong id="outstanding">TZS 0</strong></div>
-    </div>
+    <section class="stats-grid">
+      <div class="stat-card"><h2>Total Bills</h2><strong id="billCount">0</strong></div>
+      <div class="stat-card"><h2>Total Paid</h2><strong id="totalPaid">TZS 0</strong></div>
+      <div class="stat-card"><h2>Outstanding</h2><strong id="outstanding">TZS 0</strong></div>
+    </section>
 
-    <section class="card" style="padding:0; overflow:hidden;">
+    <section class="content-card">
+      <h2 style="margin-bottom:18px;">Recent Bills</h2>
       <table>
         <thead>
           <tr><th>Bill #</th><th>Month</th><th>Due</th><th>Paid</th><th>Status</th><th>Actions</th></tr>
@@ -56,12 +70,13 @@
       </table>
       <div id="emptyState" class="empty">Loading bills...</div>
     </section>
-  </div>
+  </main>
+
   <script>
     const token = localStorage.getItem('token');
     const user = JSON.parse(localStorage.getItem('user') || 'null');
     if (!token || !user) return window.location.href = 'login.html';
-    document.getElementById('welcomeText').textContent = `Welcome, ${user.fullname || user.email}`;
+    document.getElementById('welcomeText').textContent = `Karibu, ${user.fullname || user.email}`;
 
     async function loadBills() {
       try {

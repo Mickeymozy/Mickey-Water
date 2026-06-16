@@ -6,41 +6,58 @@
   <title>Login | Mickey Water</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { min-height: 100vh; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: grid; place-items: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #102a43; }
-    .card { width: min(420px, 100%); background: #fff; border-radius: 28px; padding: 36px 28px; box-shadow: 0 30px 80px rgba(15, 23, 42, 0.18); }
-    .card h1 { font-size: 2rem; margin-bottom: 14px; color: #0f172a; }
-    .card p { color: #475569; margin-bottom: 24px; line-height: 1.7; }
+    body { min-height: 100vh; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e293b 55%, #2563eb 100%); color: #fff; }
+    .site-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; max-width: 1180px; margin: 0 auto; }
+    .site-brand { font-size: 1.2rem; font-weight: 800; letter-spacing: 0.06em; }
+    .site-nav { display: flex; gap: 16px; flex-wrap: wrap; }
+    .site-nav a { color: rgba(255,255,255,0.92); text-decoration: none; font-weight: 600; }
+    .page-shell { display: grid; place-items: center; min-height: calc(100vh - 88px); padding: 20px; }
+    .auth-card { width: min(500px, 100%); background: rgba(255,255,255,0.96); border-radius: 32px; padding: 38px 34px; box-shadow: 0 35px 90px rgba(15,23,42,0.28); color: #0f172a; }
+    .auth-card h1 { font-size: 2.2rem; margin-bottom: 8px; }
+    .auth-card p { margin-bottom: 28px; color: #475569; line-height: 1.8; }
     .field { margin-bottom: 18px; }
     .field label { display: block; margin-bottom: 8px; font-weight: 700; color: #334155; }
-    .field input { width: 100%; padding: 14px 16px; border-radius: 16px; border: 1px solid #cbd5e1; font-size: 1rem; }
-    .button { width: 100%; padding: 15px 16px; border-radius: 16px; border: none; color: white; background: #3b82f6; font-weight: 700; font-size: 1rem; cursor: pointer; }
-    .button:hover { transform: translateY(-1px); box-shadow: 0 16px 30px rgba(59, 130, 246, 0.24); }
-    .links { display: flex; justify-content: space-between; margin-top: 18px; gap: 12px; flex-wrap: wrap; }
+    .field input { width: 100%; padding: 14px 16px; border-radius: 16px; border: 1px solid #cbd5e1; font-size: 1rem; background: #f8fafc; }
+    .button { width: 100%; padding: 15px 16px; border-radius: 16px; border: none; color: white; background: #2563eb; font-weight: 700; font-size: 1rem; cursor: pointer; transition: transform 0.2s ease, box-shadow 0.2s ease; }
+    .button:hover { transform: translateY(-1px); box-shadow: 0 16px 30px rgba(37,99,235,0.24); }
+    .links { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 20px; }
     .links a { color: #2563eb; text-decoration: none; font-weight: 700; }
-    .notice { margin-top: 16px; padding: 14px 16px; border-radius: 16px; background: #f8fafc; border: 1px solid #e2e8f0; color: #334155; }
+    .notice { margin-top: 22px; padding: 16px; border-radius: 18px; background: #f8fafc; border: 1px solid #e2e8f0; color: #334155; }
   </style>
 </head>
 <body>
-  <section class="card">
-    <h1>Login</h1>
-    <p>Enter your credentials to access the Mickey Water billing dashboard.</p>
-    <form id="loginForm">
-      <div class="field">
-        <label for="email">Email</label>
-        <input id="email" type="email" placeholder="you@example.com" required autocomplete="username">
-      </div>
-      <div class="field">
-        <label for="password">Password</label>
-        <input id="password" type="password" placeholder="••••••••" required autocomplete="current-password">
-      </div>
-      <button class="button" type="submit">Login</button>
-    </form>
-    <div class="links">
+  <header class="site-header">
+    <div class="site-brand">💧 Mickey Water</div>
+    <nav class="site-nav">
+      <a href="index.html">Home</a>
       <a href="signup.html">Create account</a>
-      <a href="reset-password.html">Forgot password?</a>
-    </div>
-    <div class="notice">Admin email: <strong>mickidadyhamza@gmail.com</strong></div>
-  </section>
+      <a href="records.html">Records</a>
+    </nav>
+  </header>
+
+  <main class="page-shell">
+    <section class="auth-card">
+      <h1>Login</h1>
+      <p>Sign in to access your customer dashboard, view bills, and download receipts. Use the admin email if you are managing the system.</p>
+      <form id="loginForm">
+        <div class="field">
+          <label for="email">Email</label>
+          <input id="email" type="email" placeholder="you@example.com" required autocomplete="username">
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <input id="password" type="password" placeholder="••••••••" required autocomplete="current-password">
+        </div>
+        <button class="button" type="submit">Login</button>
+      </form>
+      <div class="links">
+        <a href="signup.html">Create account</a>
+        <a href="reset-password.html">Forgot password?</a>
+      </div>
+      <div class="notice">Admin email: <strong>mickidadyhamza@gmail.com</strong></div>
+    </section>
+  </main>
+
   <script>
     const loginForm = document.getElementById('loginForm');
     loginForm.addEventListener('submit', async (event) => {
@@ -60,9 +77,9 @@
         localStorage.setItem('token', result.token);
         localStorage.setItem('user', JSON.stringify(result.user));
         if (result.user.user_type === 'admin') {
-          window.location.href = '/admin';
+          window.location.href = 'admin-dashboard.html';
         } else {
-          window.location.href = '/dashboard';
+          window.location.href = 'dashboard.html';
         }
       } catch (error) {
         alert('Unable to connect to the server. Start the app with npm start and open it at http://localhost:3000');
