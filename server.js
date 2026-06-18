@@ -6,22 +6,12 @@ const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
-const sqlite3 = require('sqlite3').verbose();
-const { open } = require('sqlite');
+const mongoose = require('mongoose');
 const { v4: uuidv4 } = require('uuid');
 
 const app = express();
-const DB_FILE = path.join(__dirname, 'database.sqlite');
-const DATA_DIR = path.join(__dirname, 'data');
-const JSON_USERS = path.join(DATA_DIR, 'users.json');
-const JSON_BILLS = path.join(DATA_DIR, 'bills.json');
-
-// Ensure data directory and JSON files exist for fallback
-if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR);
-if (!fs.existsSync(JSON_USERS)) fs.writeFileSync(JSON_USERS, JSON.stringify([]));
-if (!fs.existsSync(JSON_BILLS)) fs.writeFileSync(JSON_BILLS, JSON.stringify([]));
-
 const JWT_SECRET = process.env.JWT_SECRET || 'change_this_secret';
+const MONGODB_URI = process.env.MONGODB_URI;
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'mickidadyhamza@gmail.com';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Admin@123';
 
@@ -38,104 +28,84 @@ const transporter = nodemailer.createTransport({
   }
 });
 
-let db;
-let isOfflineMode = false;
+// ==================== MONGODB SCHEMAS ====================
+const UserSchema = new mongoose.Schema({
+  id: { type: String, default: uuidv4, unique: true },
+  email: { type: String, unique: true, required: true },
+  password: { type: String, required: true },
+  fullname: { type: String, required: true },
+  phone: String,
+  address: String,
+  account_number: { type: String, unique: true, required: true },
+  meter_number: String,
+  user_type: { type: String, default: 'customer' },
+  status: { type: String, default: 'active' },
+  created_at: { type: Date, default: Date.now },
+  updated_at: { type: Date, default: Date.now }
+});
+const User = mongoose.model('User', UserSchema);
+
+const BillSchema = new mongoose.Schema({
+  id: { type: String, default: uuidv4, unique: true },
+  user_id: String,
+  bill_number: { type: String, unique: true },
+  billing_month: Date,
+  previous_reading: Number,
+  current_reading: Number,
+  units_consumed: Number,
+  rate_per_unit: Number,
+  amount_due: Number,
+  amount_paid: { type: Number, default: 0 },
+  status: String,
+  due_date: Date,
+  created_at: { type: Date, default: Date.now }
+});
+const Bill = mongoose.model('Bill', BillSchema);
+
+const PaymentSchema = new mongoose.Schema({
+  id: { type: String, default: uuidv4, unique: true },
+  bill_id: String,
+  user_id: String,
+  amount_paid: Number,
+  payment_method: String,
+  transaction_id: { type: String, unique: true },
+  receipt_number: { type: String, unique: true },
+  payment_date: { type: Date, default: Date.now },
+  status: String,
+  created_at: { type: Date, default: Date.now }
+});
+const Payment = mongoose.model('Payment', PaymentSchema);
+
+const AnalyticsSchema = new mongoose.Schema({
+  id: { type: String, default: uuidv4 },
+  user_id: String,
+  event_type: String,
+  event_data: mongoose.Schema.Types.Mixed,
+  created_at: { type: Date, default: Date.now }
+});
+const Analytics = mongoose.model('Analytics', AnalyticsSchema);
 
 async function initDb() {
-  try {
-    db = await open({ filename: DB_FILE, driver: sqlite3.Database });
-    console.log('✅ SQLite database connected.');
-  } catch (err) {
-    console.error('⚠️ SQLite failed, switching to JSON Fallback:', err.message);
-    isOfflineMode = true;
+  if (!MONGODB_URI) {
+    console.error('❌ MONGODB_URI is missing in .env');
+    process.exit(1);
   }
+  await mongoose.connect(MONGODB_URI);
+  console.log('✅ Connected to MongoDB Atlas');
 
-  if (!isOfflineMode) {
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS users (
-      id TEXT PRIMARY KEY,
-      email TEXT UNIQUE NOT NULL,
-      password TEXT NOT NULL,
-      fullname TEXT NOT NULL,
-      phone TEXT,
-      address TEXT,
-      account_number TEXT UNIQUE NOT NULL,
-      meter_number TEXT,
-      user_type TEXT NOT NULL DEFAULT 'customer',
-      status TEXT NOT NULL DEFAULT 'active',
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL
-    );
-  `);
-
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS bills (
-      id TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL,
-      bill_number TEXT UNIQUE NOT NULL,
-      billing_month TEXT NOT NULL,
-      previous_reading INTEGER NOT NULL,
-      current_reading INTEGER NOT NULL,
-      units_consumed INTEGER NOT NULL,
-      rate_per_unit REAL NOT NULL,
-      amount_due REAL NOT NULL,
-      amount_paid REAL NOT NULL DEFAULT 0,
-      status TEXT NOT NULL,
-      due_date TEXT NOT NULL,
-      created_at TEXT NOT NULL,
-      FOREIGN KEY(user_id) REFERENCES users(id)
-    );
-  `);
-
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS payments (
-      id TEXT PRIMARY KEY,
-      bill_id TEXT NOT NULL,
-      user_id TEXT NOT NULL,
-      amount_paid REAL NOT NULL,
-      payment_method TEXT,
-      transaction_id TEXT UNIQUE,
-      receipt_number TEXT UNIQUE NOT NULL,
-      payment_date TEXT NOT NULL,
-      status TEXT NOT NULL,
-      created_at TEXT NOT NULL,
-      FOREIGN KEY(bill_id) REFERENCES bills(id),
-      FOREIGN KEY(user_id) REFERENCES users(id)
-    );
-  `);
-
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS analytics (
-      id TEXT PRIMARY KEY,
-      user_id TEXT,
-      event_type TEXT NOT NULL,
-      event_data TEXT,
-      created_at TEXT NOT NULL,
-      FOREIGN KEY(user_id) REFERENCES users(id)
-    );
-  `);
-
-  const adminExists = await db.get('SELECT id FROM users WHERE email = ?', ADMIN_EMAIL);
-  if (!adminExists) {
+  // Admin check
+  const admin = await User.findOne({ email: ADMIN_EMAIL });
+  if (!admin) {
     const hashed = await bcrypt.hash(ADMIN_PASSWORD, 10);
-    const adminId = uuidv4();
-    const now = new Date().toISOString();
-    await db.run(
-      `INSERT INTO users (id, email, password, fullname, account_number, user_type, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 'admin', 'active', ?, ?)`,
-      [adminId, ADMIN_EMAIL, hashed, 'System Administrator', 'ADMIN-001', now, now]
-    );
-    console.log('✅ Admin user initialized:', ADMIN_EMAIL);
+    await new User({
+      email: ADMIN_EMAIL,
+      password: hashed,
+      fullname: 'System Administrator',
+      account_number: 'ADMIN-001',
+      user_type: 'admin'
+    }).save();
+    console.log('✅ Admin initialized');
   }
-  }
-}
-
-// Helper for JSON Fallback
-async function getJsonData(file) {
-  return JSON.parse(fs.readFileSync(file, 'utf8'));
-}
-
-async function saveJsonData(file, data) {
-  fs.writeFileSync(file, JSON.stringify(data, null, 2));
 }
 
 function generateToken(user) {
@@ -163,57 +133,30 @@ function requireAdmin(req, res, next) {
 }
 
 async function logEvent(userId, eventType, eventData = {}) {
-  await db.run(
-    'INSERT INTO analytics (id, user_id, event_type, event_data, created_at) VALUES (?, ?, ?, ?, ?)',
-    [uuidv4(), userId || null, eventType, JSON.stringify(eventData), new Date().toISOString()]
-  );
+  try {
+    await new Analytics({ user_id: userId, event_type: eventType, event_data: eventData }).save();
+  } catch (e) { console.warn('Logging failed'); }
 }
 
 app.post('/api/auth/signup', async (req, res) => {
   const { fullname, email, password, phone, address, account_number } = req.body;
-  if (!fullname || !email || !password || !account_number) {
-    return res.status(400).json({ error: 'All required fields must be provided' });
-  }
-
-  const hashed = await bcrypt.hash(password, 10);
-  const now = new Date().toISOString();
-  const userId = uuidv4();
-
-  if (!isOfflineMode) {
-    const exists = await db.get('SELECT id FROM users WHERE email = ? OR account_number = ?', [email, account_number]);
+  try {
+    const exists = await User.findOne({ $or: [{ email }, { account_number }] });
     if (exists) return res.status(409).json({ error: 'Email or account number already exists' });
-    await db.run(
-      'INSERT INTO users (id, email, password, fullname, phone, address, account_number, user_type, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [userId, email, hashed, fullname, phone || null, address || null, account_number, 'customer', 'active', now, now]
-    );
-  } else {
-    const users = await getJsonData(JSON_USERS);
-    if (users.find(u => u.email === email || u.account_number === account_number)) {
-      return res.status(409).json({ error: 'Email or account number already exists' });
-    }
-    users.push({ id: userId, email, password: hashed, fullname, phone, address, account_number, user_type: 'customer', status: 'active', created_at: now });
-    await saveJsonData(JSON_USERS, users);
-  }
 
-  await logEvent(userId, 'user_signup', { email });
-  res.status(201).json({ message: 'Account created successfully. Please login.' });
+    const hashed = await bcrypt.hash(password, 10);
+    const newUser = await new User({ fullname, email, password: hashed, phone, address, account_number }).save();
+    await logEvent(newUser.id, 'user_signup', { email });
+    res.status(201).json({ message: 'Account created successfully.' });
+  } catch (err) {
+    res.status(500).json({ error: 'Signup failed' });
+  }
 });
 
 app.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body;
-  if (!email || !password) return res.status(400).json({ error: 'Email and password are required' });
 
-  let user;
-  if (!isOfflineMode) {
-    user = await db.get('SELECT * FROM users WHERE email = ?', [email]);
-  } else {
-    const users = await getJsonData(JSON_USERS);
-    user = users.find(u => u.email === email);
-    if (!user && email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
-        user = { id: 'admin-id', email: ADMIN_EMAIL, fullname: 'Admin', user_type: 'admin', status: 'active', password: await bcrypt.hash(ADMIN_PASSWORD, 10) };
-    }
-  }
-
+  const user = await User.findOne({ email });
   if (!user) return res.status(401).json({ error: 'Invalid credentials' });
   if (user.status === 'suspended') return res.status(403).json({ error: 'Account suspended' });
 
@@ -237,13 +180,12 @@ app.post('/api/auth/login', async (req, res) => {
 
 app.post('/api/auth/forgot-password', async (req, res) => {
   const { email } = req.body;
-  if (!email) return res.status(400).json({ error: 'Email is required' });
 
-  const user = await db.get('SELECT id FROM users WHERE email = ?', [email]);
+  const user = await User.findOne({ email });
   if (!user) return res.status(404).json({ error: 'Email not found' });
 
   const token = jwt.sign({ email, purpose: 'reset' }, JWT_SECRET, { expiresIn: '1h' });
-  const resetUrl = `${req.protocol}://${req.get('host')}/reset-password.html?token=${token}`;
+  const resetUrl = `${req.protocol}://${req.get('host')}/reset-password?token=${token}`;
 
   await transporter.sendMail({
     from: ADMIN_EMAIL,
@@ -263,8 +205,9 @@ app.post('/api/auth/reset-password', async (req, res) => {
   try {
     const payload = jwt.verify(token, JWT_SECRET);
     if (payload.purpose !== 'reset') throw new Error('Invalid token');
+
     const hashed = await bcrypt.hash(newPassword, 10);
-    await db.run('UPDATE users SET password = ?, updated_at = ? WHERE email = ?', [hashed, new Date().toISOString(), payload.email]);
+    await User.findOneAndUpdate({ email: payload.email }, { password: hashed, updated_at: Date.now() });
     res.json({ message: 'Password reset successful' });
   } catch (err) {
     res.status(400).json({ error: 'Invalid or expired token' });
@@ -272,114 +215,104 @@ app.post('/api/auth/reset-password', async (req, res) => {
 });
 
 app.get('/api/profile', authenticateToken, async (req, res) => {
-  const user = await db.get(
-    'SELECT id, email, fullname, user_type FROM users WHERE id = ?',
-    [req.user.id]
-  );
+  const user = await User.findOne({ id: req.user.id });
   if (!user) return res.status(404).json({ error: 'User not found' });
-  res.json(user);
+  res.json({ id: user.id, email: user.email, fullname: user.fullname, user_type: user.user_type });
 });
 
 app.get('/api/bills', authenticateToken, async (req, res) => {
-  const bills = await db.all('SELECT * FROM bills WHERE user_id = ? ORDER BY billing_month DESC', [req.user.id]);
+  const bills = await Bill.find({ user_id: req.user.id }).sort({ billing_month: -1 });
   res.json(bills);
 });
 
 app.get('/api/bills/:billId', authenticateToken, async (req, res) => {
-  const bill = await db.get('SELECT b.*, u.email, u.fullname, u.address FROM bills b JOIN users u ON b.user_id = u.id WHERE b.id = ? AND b.user_id = ?', [req.params.billId, req.user.id]);
+  const bill = await Bill.findOne({ id: req.params.billId, user_id: req.user.id });
   if (!bill) return res.status(404).json({ error: 'Bill not found' });
-  const payments = await db.all('SELECT * FROM payments WHERE bill_id = ?', [req.params.billId]);
+  const payments = await Payment.find({ bill_id: req.params.billId });
   res.json({ bill, payments });
 });
 
 app.post('/api/payments', authenticateToken, async (req, res) => {
   const { billId, amountPaid, paymentMethod } = req.body;
-  if (!billId || !amountPaid) return res.status(400).json({ error: 'Bill ID and amount are required' });
 
-  const bill = await db.get('SELECT * FROM bills WHERE id = ? AND user_id = ?', [billId, req.user.id]);
+  const bill = await Bill.findOne({ id: billId, user_id: req.user.id });
   if (!bill) return res.status(404).json({ error: 'Bill not found' });
 
-  const paymentId = uuidv4();
-  const receiptNumber = `RCP-${Date.now()}`;
-  const transactionId = `TXN-${uuidv4().slice(0, 12)}`;
-  const now = new Date().toISOString();
+  const payment = await new Payment({
+    bill_id: billId,
+    user_id: req.user.id,
+    amount_paid: amountPaid,
+    payment_method: paymentMethod || 'manual',
+    transaction_id: `TXN-${uuidv4().slice(0, 12)}`,
+    receipt_number: `RCP-${Date.now()}`,
+    status: 'successful'
+  }).save();
 
-  await db.run(
-    'INSERT INTO payments (id, bill_id, user_id, amount_paid, payment_method, transaction_id, receipt_number, payment_date, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-    [paymentId, billId, req.user.id, amountPaid, paymentMethod || 'manual', transactionId, receiptNumber, now, 'successful', now]
-  );
-
-  const newPaid = bill.amount_paid + Number(amountPaid);
-  const status = newPaid >= bill.amount_due ? 'paid' : 'partially_paid';
-  await db.run('UPDATE bills SET amount_paid = ?, status = ? WHERE id = ?', [newPaid, status, billId]);
+  bill.amount_paid += Number(amountPaid);
+  bill.status = bill.amount_paid >= bill.amount_due ? 'paid' : 'partially_paid';
+  await bill.save();
 
   await logEvent(req.user.id, 'payment_created', { billId, amountPaid, receiptNumber });
-  res.json({ message: 'Payment recorded successfully', receiptNumber });
+  res.json({ message: 'Payment recorded', receiptNumber: payment.receipt_number });
 });
 
 app.get('/api/receipt/:paymentOrBillId', authenticateToken, async (req, res) => {
-  const { paymentOrBillId } = req.params;
-  let payment = await db.get('SELECT p.*, b.bill_number, b.amount_due, u.email, u.fullname FROM payments p JOIN bills b ON p.bill_id = b.id JOIN users u ON p.user_id = u.id WHERE p.id = ? AND p.user_id = ?', [paymentOrBillId, req.user.id]);
-
-  if (!payment) {
-    const bill = await db.get('SELECT id FROM bills WHERE id = ? AND user_id = ?', [paymentOrBillId, req.user.id]);
-    if (bill) {
-      payment = await db.get('SELECT p.*, b.bill_number, b.amount_due, u.email, u.fullname FROM payments p JOIN bills b ON p.bill_id = b.id JOIN users u ON p.user_id = u.id WHERE p.bill_id = ? AND p.user_id = ? ORDER BY p.payment_date DESC LIMIT 1', [bill.id, req.user.id]);
-    }
-  }
-
+  // Hii inahitaji join ya manual au populate katika Mongoose
+  const payment = await Payment.findOne({ $or: [{ id: req.params.paymentOrBillId }, { bill_id: req.params.paymentOrBillId }], user_id: req.user.id }).sort({ payment_date: -1 });
   if (!payment) return res.status(404).json({ error: 'Receipt not found' });
-  res.send(generateReceiptHTML(payment));
+  
+  const bill = await Bill.findOne({ id: payment.bill_id });
+  const user = await User.findOne({ id: req.user.id });
+  res.send(generateReceiptHTML({ ...payment._doc, bill_number: bill.bill_number, fullname: user.fullname, email: user.email }));
 });
 
 app.get('/api/admin/users', authenticateToken, requireAdmin, async (req, res) => {
-  const users = await db.all('SELECT id, email, fullname, phone, account_number, user_type, status, created_at FROM users WHERE user_type = "customer" ORDER BY created_at DESC');
+  const users = await User.find({ user_type: 'customer' }).sort({ created_at: -1 });
   res.json(users);
 });
 
 app.get('/api/admin/users/:userId', authenticateToken, requireAdmin, async (req, res) => {
-  const user = await db.get('SELECT * FROM users WHERE id = ?', [req.params.userId]);
+  const user = await User.findOne({ id: req.params.userId });
   if (!user) return res.status(404).json({ error: 'User not found' });
-  const bills = await db.all('SELECT * FROM bills WHERE user_id = ? ORDER BY billing_month DESC LIMIT 12', [req.params.userId]);
-  const payments = await db.all('SELECT * FROM payments WHERE user_id = ? ORDER BY payment_date DESC LIMIT 20', [req.params.userId]);
+  const bills = await Bill.find({ user_id: req.params.userId }).sort({ billing_month: -1 }).limit(12);
+  const payments = await Payment.find({ user_id: req.params.userId }).sort({ payment_date: -1 }).limit(20);
   res.json({ user, recentBills: bills, recentPayments: payments });
 });
 
 app.put('/api/admin/users/:userId/status', authenticateToken, requireAdmin, async (req, res) => {
   const { status } = req.body;
-  if (!['active', 'inactive', 'suspended'].includes(status)) return res.status(400).json({ error: 'Invalid status' });
-  await db.run('UPDATE users SET status = ?, updated_at = ? WHERE id = ?', [status, new Date().toISOString(), req.params.userId]);
+  await User.findOneAndUpdate({ id: req.params.userId }, { status, updated_at: Date.now() });
   await logEvent(req.user.id, 'user_status_updated', { userId: req.params.userId, status });
   res.json({ message: 'User status updated' });
 });
 
 app.post('/api/admin/bills', authenticateToken, requireAdmin, async (req, res) => {
   const { userId, previousReading, currentReading, ratePerUnit } = req.body;
-  if (!userId || previousReading == null || currentReading == null) return res.status(400).json({ error: 'Required fields missing' });
-
   const units = currentReading - previousReading;
-  const amountDue = units * (ratePerUnit || 50);
-  const billId = uuidv4();
-  const billNumber = `BIL-${Date.now()}`;
-  const dueDate = new Date();
-  dueDate.setDate(dueDate.getDate() + 30);
-  const now = new Date().toISOString();
+  const bill = await new Bill({
+    user_id: userId,
+    bill_number: `BIL-${Date.now()}`,
+    billing_month: new Date(),
+    previous_reading: previousReading,
+    current_reading: currentReading,
+    units_consumed: units,
+    rate_per_unit: ratePerUnit || 2000,
+    amount_due: units * (ratePerUnit || 2000),
+    status: 'pending',
+    due_date: new Date(Date.now() + 30*24*60*60*1000)
+  }).save();
 
-  await db.run(
-    'INSERT INTO bills (id, user_id, bill_number, billing_month, previous_reading, current_reading, units_consumed, rate_per_unit, amount_due, due_date, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-    [billId, userId, billNumber, new Date().toISOString(), previousReading, currentReading, units, ratePerUnit || 50, amountDue, dueDate.toISOString().split('T')[0], 'pending', now]
-  );
-
-  await logEvent(req.user.id, 'bill_created', { userId, billNumber, amountDue });
-  res.status(201).json({ message: 'Bill created successfully', billNumber, amountDue });
+  await logEvent(req.user.id, 'bill_created', { userId, billNumber: bill.bill_number });
+  res.status(201).json({ message: 'Bill created', billNumber: bill.bill_number });
 });
 
 app.get('/api/admin/analytics', authenticateToken, requireAdmin, async (req, res) => {
-  const totalUsers = await db.get('SELECT COUNT(*) as count FROM users WHERE user_type = "customer"');
-  const totalRevenue = await db.get('SELECT SUM(amount_paid) as total FROM payments WHERE status = "successful"');
-  const pendingBills = await db.get('SELECT COUNT(*) as count FROM bills WHERE status IN ("pending", "partially_paid")');
-  const recentActivities = await db.all('SELECT * FROM analytics ORDER BY created_at DESC LIMIT 50');
-  res.json({ totalUsers: totalUsers.count, totalRevenue: totalRevenue.total || 0, pendingBills: pendingBills.count, recentActivities });
+  const totalUsers = await User.countDocuments({ user_type: 'customer' });
+  const payments = await Payment.find({ status: 'successful' });
+  const totalRevenue = payments.reduce((sum, p) => sum + p.amount_paid, 0);
+  const pendingBills = await Bill.countDocuments({ status: { $in: ['pending', 'partially_paid'] } });
+  const recentActivities = await Analytics.find().sort({ created_at: -1 }).limit(50);
+  res.json({ totalUsers, totalRevenue, pendingBills, recentActivities });
 });
 
 app.get('/', (req, res) => {
@@ -426,13 +359,8 @@ process.on('unhandledRejection', (reason) => console.error('🔥 Unhandled Rejec
 const PORT = process.env.PORT || 3000;
 initDb().then(() => {
   app.listen(PORT, () => {
-    console.log(`🚀 Server running on http://localhost:${PORT}`);
-    console.log(`📁 SQLite database: ${DB_FILE}`);
+    console.log(`🚀 Mickey Water running on port ${PORT}`);
   });
-}).catch((err) => {
-  console.error('🔥 Imeshindwa kuanzisha database. Seva haiwezi kuanza:', err);
-  console.error('Tafadhali angalia ruhusa za faili ya database au matatizo ya SQLite.');
-  process.exit(1);
 });
 
 function generateReceiptHTML(payment) {
