@@ -183,7 +183,26 @@ Water Billing System
         })();
 
         // ==================== DATA MANAGEMENT ====================
-        function getRecords() {
+        async function fetchRecordsFromServer() {
+            const token = localStorage.getItem('token');
+            try {
+                const res = await fetch('/api/bills', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    const bills = await res.json();
+                    // Convert server format to UI format if needed
+                    return bills.map(b => ({
+                        name: b.fullname || 'Mteja',
+                        phone: 'N/A',
+                        units: b.units_consumed,
+                        total: b.amount_due,
+                        status: b.status === 'paid' ? 'Imelipwa ✅' : 'Haijalipwa ⏳',
+                        date: new Date(b.created_at).toLocaleDateString('sw-TZ'),
+                        timestamp: new Date(b.created_at).getTime()
+                    }));
+                }
+            } catch (e) { console.log("Seva haipatikani, natumia local storage."); }
             const records = localStorage.getItem('water_bills');
             return records ? JSON.parse(records) : [];
         }
