@@ -183,7 +183,7 @@ Water Billing System
         })();
 
         // ==================== DATA MANAGEMENT ====================
-        async function fetchRecordsFromServer() {
+        async function getRecords() {
             const token = localStorage.getItem('token');
             try {
                 const res = await fetch('/api/bills', {
@@ -203,35 +203,30 @@ Water Billing System
                     }));
                 }
             } catch (e) { console.log("Seva haipatikani, natumia local storage."); }
+            
             const records = localStorage.getItem('water_bills');
             return records ? JSON.parse(records) : [];
         }
 
         function saveRecords(records) {
             localStorage.setItem('water_bills', JSON.stringify(records));
-            updateStatistics();
-            displayRecords();
         }
 
-        function saveRecord(record) {
-            const records = getRecords();
-            records.unshift(record); // Add to beginning for newest first
-            saveRecords(records);
-        }
-
-        function deleteRecord(index) {
-            const records = getRecords();
+        async function deleteRecord(index) {
+            const records = await getRecords();
             const deletedRecord = records[index];
             if (confirm(`Je, una uhakika unataka kufuta rekodi ya ${deletedRecord.name}?`)) {
                 records.splice(index, 1);
                 saveRecords(records);
-                showToast(`✅ Rekodi ya ${deletedRecord.name} imefutwa`);
+                await displayRecords();
+                await updateStatistics();
+                showToast(`✅ Rekodi imefutwa`);
             }
         }
 
         // ==================== STATISTICS ====================
-        function updateStatistics() {
-            const records = getRecords();
+        async function updateStatistics() {
+            const records = await getRecords();
             const totalCustomers = records.length;
             const totalRevenue = records.reduce((sum, r) => sum + r.total, 0);
             const unpaidCount = records.filter(r => r.status === 'Haijalipwa ⏳' || r.status === 'Haijalipwa').length;
@@ -314,8 +309,8 @@ Asante kwa ushirikiano wako.
             displayRecords();
         }
 
-        function displayRecords() {
-            let records = getRecords();
+        async function displayRecords() {
+            let records = await getRecords();
             const container = document.getElementById('recordsList');
             
             // Apply search filter
@@ -339,10 +334,6 @@ Asante kwa ushirikiano wako.
 
             container.innerHTML = '';
             records.forEach((record, originalIndex) => {
-                // Find original index for deletion
-                const allRecords = getRecords();
-                const realIndex = allRecords.findIndex(r => r.timestamp === record.timestamp);
-                
                 const div = document.createElement('div');
                 div.className = 'record-item';
                 div.innerHTML = `
@@ -359,7 +350,7 @@ Asante kwa ushirikiano wako.
                         <span>📅 ${record.date}</span>
                     </div>
                     <div style="display: flex; gap: 8px; justify-content: flex-end;">
-                        <button class="delete-btn" onclick="deleteRecord(${realIndex})">🗑 Futa Rekodi</button>
+                        <button class="delete-btn" onclick="deleteRecord(${originalIndex})">🗑 Futa Rekodi</button>
                     </div>
                 `;
                 container.appendChild(div);
@@ -374,7 +365,7 @@ Asante kwa ushirikiano wako.
         }
 
         // ==================== SAVE AND SEND ====================
-        function saveAndSend(event) {
+        async function saveAndSend(event) {
             event.preventDefault();
 
             const name = document.getElementById('customerName').value.trim();
@@ -419,7 +410,10 @@ Asante kwa ushirikiano wako.
                 timestamp: Date.now()
             };
 
-            saveRecord(record);
+            const localData = localStorage.getItem('water_bills');
+            const records = localData ? JSON.parse(localData) : [];
+            records.unshift(record);
+            saveRecords(records);
             
             const smsMessage = generateSMS(name, prev, curr, units, total, statusDisplay);
             
@@ -439,6 +433,8 @@ Asante kwa ushirikiano wako.
             document.getElementById('status').value = 'Haijalipwa';
 
             updateSMSPreview();
+            await displayRecords();
+            await updateStatistics();
         }
 
         // ==================== TOAST NOTIFICATION ====================

@@ -20,11 +20,15 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cors({ origin: '*', credentials: true }));
 app.use(express.static(path.join(__dirname)));
 
+// Configure Email Transporter
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
-    user: process.env.ADMIN_EMAIL || ADMIN_EMAIL,
-    pass: process.env.ADMIN_PASSWORD
+    user: process.env.EMAIL_USER || ADMIN_EMAIL,
+    pass: process.env.EMAIL_PASS || process.env.ADMIN_PASSWORD
+  },
+  tls: {
+    rejectUnauthorized: false
   }
 });
 
@@ -85,13 +89,14 @@ const AnalyticsSchema = new mongoose.Schema({
 });
 const Analytics = mongoose.model('Analytics', AnalyticsSchema);
 
+// ==================== DATABASE INITIALIZATION ====================
 async function initDb() {
   if (!MONGODB_URI) {
-    console.error('❌ MONGODB_URI is missing in .env');
-    process.exit(1);
+    throw new Error('MONGODB_URI is missing in .env');
   }
+
   await mongoose.connect(MONGODB_URI);
-  console.log('✅ Connected to MongoDB Atlas');
+  console.log('✅ Database connected to MongoDB Atlas');
 
   // Admin check
   const admin = await User.findOne({ email: ADMIN_EMAIL });
@@ -108,6 +113,7 @@ async function initDb() {
   }
 }
 
+// ==================== AUTH HELPERS ====================
 function generateToken(user) {
   return jwt.sign({ id: user.id, email: user.email, user_type: user.user_type }, JWT_SECRET, { expiresIn: '7d' });
 }
@@ -132,12 +138,14 @@ function requireAdmin(req, res, next) {
   next();
 }
 
+// ==================== LOGGING ====================
 async function logEvent(userId, eventType, eventData = {}) {
   try {
     await new Analytics({ user_id: userId, event_type: eventType, event_data: eventData }).save();
   } catch (e) { console.warn('Logging failed'); }
 }
 
+// ==================== AUTH ROUTES ====================
 app.post('/api/auth/signup', async (req, res) => {
   const { fullname, email, password, phone, address, account_number } = req.body;
   try {
@@ -207,19 +215,24 @@ app.post('/api/auth/reset-password', async (req, res) => {
     if (payload.purpose !== 'reset') throw new Error('Invalid token');
 
     const hashed = await bcrypt.hash(newPassword, 10);
-    await User.findOneAndUpdate({ email: payload.email }, { password: hashed, updated_at: Date.now() });
+    await User.findOneAndUpdate(
+      { email: payload.email },
+      { password: hashed, updated_at: new Date() }
+    );
     res.json({ message: 'Password reset successful' });
   } catch (err) {
     res.status(400).json({ error: 'Invalid or expired token' });
   }
 });
 
+// ==================== USER ROUTES ====================
 app.get('/api/profile', authenticateToken, async (req, res) => {
   const user = await User.findOne({ id: req.user.id });
   if (!user) return res.status(404).json({ error: 'User not found' });
   res.json({ id: user.id, email: user.email, fullname: user.fullname, user_type: user.user_type });
 });
 
+// ==================== BILLING ROUTES ====================
 app.get('/api/bills', authenticateToken, async (req, res) => {
   const bills = await Bill.find({ user_id: req.user.id }).sort({ billing_month: -1 });
   res.json(bills);
@@ -232,6 +245,7 @@ app.get('/api/bills/:billId', authenticateToken, async (req, res) => {
   res.json({ bill, payments });
 });
 
+// ==================== PAYMENT ROUTES ====================
 app.post('/api/payments', authenticateToken, async (req, res) => {
   const { billId, amountPaid, paymentMethod } = req.body;
 
@@ -252,13 +266,20 @@ app.post('/api/payments', authenticateToken, async (req, res) => {
   bill.status = bill.amount_paid >= bill.amount_due ? 'paid' : 'partially_paid';
   await bill.save();
 
-  await logEvent(req.user.id, 'payment_created', { billId, amountPaid, receiptNumber });
+  await logEvent(req.user.id, 'payment_created', { 
+    billId, 
+    amountPaid, 
+    receiptNumber: payment.receipt_number 
+  });
   res.json({ message: 'Payment recorded', receiptNumber: payment.receipt_number });
 });
 
 app.get('/api/receipt/:paymentOrBillId', authenticateToken, async (req, res) => {
-  // Hii inahitaji join ya manual au populate katika Mongoose
-  const payment = await Payment.findOne({ $or: [{ id: req.params.paymentOrBillId }, { bill_id: req.params.paymentOrBillId }], user_id: req.user.id }).sort({ payment_date: -1 });
+  const payment = await Payment.findOne({
+    $or: [{ id: req.params.paymentOrBillId }, { bill_id: req.params.paymentOrBillId }],
+    user_id: req.user.id
+  }).sort({ payment_date: -1 });
+
   if (!payment) return res.status(404).json({ error: 'Receipt not found' });
   
   const bill = await Bill.findOne({ id: payment.bill_id });
@@ -266,6 +287,7 @@ app.get('/api/receipt/:paymentOrBillId', authenticateToken, async (req, res) => 
   res.send(generateReceiptHTML({ ...payment._doc, bill_number: bill.bill_number, fullname: user.fullname, email: user.email }));
 });
 
+// ==================== ADMIN ROUTES ====================
 app.get('/api/admin/users', authenticateToken, requireAdmin, async (req, res) => {
   const users = await User.find({ user_type: 'customer' }).sort({ created_at: -1 });
   res.json(users);
@@ -281,7 +303,7 @@ app.get('/api/admin/users/:userId', authenticateToken, requireAdmin, async (req,
 
 app.put('/api/admin/users/:userId/status', authenticateToken, requireAdmin, async (req, res) => {
   const { status } = req.body;
-  await User.findOneAndUpdate({ id: req.params.userId }, { status, updated_at: Date.now() });
+  await User.findOneAndUpdate({ id: req.params.userId }, { status, updated_at: new Date() });
   await logEvent(req.user.id, 'user_status_updated', { userId: req.params.userId, status });
   res.json({ message: 'User status updated' });
 });
@@ -315,6 +337,7 @@ app.get('/api/admin/analytics', authenticateToken, requireAdmin, async (req, res
   res.json({ totalUsers, totalRevenue, pendingBills, recentActivities });
 });
 
+// ==================== PAGE ROUTES ====================
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
@@ -353,16 +376,27 @@ app.get('/:page.html', (req, res) => {
   return res.redirect('/');
 });
 
+// ==================== SERVER SETUP ====================
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ error: 'Internal Server Error' });
+});
+
 process.on('uncaughtException', (err) => console.error('🔥 Uncaught Exception:', err));
 process.on('unhandledRejection', (reason) => console.error('🔥 Unhandled Rejection:', reason));
 
 const PORT = process.env.PORT || 3000;
 initDb().then(() => {
   app.listen(PORT, () => {
-    console.log(`🚀 Mickey Water running on port ${PORT}`);
+    console.log(`🚀 Mickey Water running on http://localhost:${PORT}`);
   });
+}).catch(err => {
+  console.error('❌ Failed to start server:', err);
+  process.exit(1);
 });
 
 function generateReceiptHTML(payment) {
-  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Receipt ${payment.receipt_number}</title><style>body{font-family:Arial,sans-serif;background:#f7fafc;margin:0;padding:30px}body>.receipt{max-width:700px;margin:auto;background:#fff;padding:30px;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.08)}.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:30px}.header h1{font-size:24px;color:#1f2937}.section{margin-bottom:20px}.section h2{margin-bottom:12px;color:#111827;font-size:16px}.row{display:flex;justify-content:space-between;margin-bottom:10px}.label{color:#6b7280}.value{font-weight:700}.status{color:#10b981;font-weight:700}.amount{color:#0f766e;font-size:18px;font-weight:700}</style></head><body><div class="receipt"><div class="header"><div><h1>MICKEY WATER</h1><p>Official Payment Receipt</p></div><div><span>Receipt #${payment.receipt_number}</span></div></div><div class="section"><h2>Customer</h2><div class="row"><span class="label">Name</span><span class="value">${payment.fullname}</span></div><div class="row"><span class="label">Email</span><span class="value">${payment.email}</span></div><div class="row"><span class="label">Bill #</span><span class="value">${payment.bill_number}</span></div></div><div class="section"><h2>Payment</h2><div class="row"><span class="label">Amount Paid</span><span class="amount">TZS ${payment.amount_paid.toLocaleString()}</span></div><div class="row"><span class="label">Transaction ID</span><span class="value">${payment.transaction_id}</span></div><div class="row"><span class="label">Date</span><span class="value">${new Date(payment.payment_date).toLocaleDateString()}</span></div></div><div class="section"><h2>Status</h2><div class="row"><span class="label">Payment Status</span><span class="status">${payment.status.toUpperCase()}</span></div></div><div style="text-align:center;margin-top:30px;color:#6b7280;font-size:14px;">Thank you for paying your bill with Mickey Water.</div></div></body></html>`;
+  const amount = payment.amount_paid ? payment.amount_paid.toLocaleString() : '0';
+  const date = payment.payment_date ? new Date(payment.payment_date).toLocaleDateString() : 'N/A';
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Receipt ${payment.receipt_number || 'N/A'}</title><style>body{font-family:Arial,sans-serif;background:#f7fafc;margin:0;padding:30px}body>.receipt{max-width:700px;margin:auto;background:#fff;padding:30px;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.08)}.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:30px}.header h1{font-size:24px;color:#1f2937}.section{margin-bottom:20px}.section h2{margin-bottom:12px;color:#111827;font-size:16px}.row{display:flex;justify-content:space-between;margin-bottom:10px}.label{color:#6b7280}.value{font-weight:700}.status{color:#10b981;font-weight:700}.amount{color:#0f766e;font-size:18px;font-weight:700}</style></head><body><div class="receipt"><div class="header"><div><h1>MICKEY WATER</h1><p>Official Payment Receipt</p></div><div><span>Receipt #${payment.receipt_number || 'N/A'}</span></div></div><div class="section"><h2>Customer</h2><div class="row"><span class="label">Name</span><span class="value">${payment.fullname || 'N/A'}</span></div><div class="row"><span class="label">Email</span><span class="value">${payment.email || 'N/A'}</span></div><div class="row"><span class="label">Bill #</span><span class="value">${payment.bill_number || 'N/A'}</span></div></div><div class="section"><h2>Payment</h2><div class="row"><span class="label">Amount Paid</span><span class="amount">TZS ${amount}</span></div><div class="row"><span class="label">Transaction ID</span><span class="value">${payment.transaction_id || 'N/A'}</span></div><div class="row"><span class="label">Date</span><span class="value">${date}</span></div></div><div class="section"><h2>Status</h2><div class="row"><span class="label">Payment Status</span><span class="status">${(payment.status || 'N/A').toUpperCase()}</span></div></div><div style="text-align:center;margin-top:30px;color:#6b7280;font-size:14px;">Thank you for paying your bill with Mickey Water.</div></div></body></html>`;
 }
