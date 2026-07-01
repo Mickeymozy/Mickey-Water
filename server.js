@@ -3,10 +3,12 @@ require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const express = require('express');
 const fs = require('fs');
+const path = require('path');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
+const sqlite3 = require('sqlite3').verbose();
 const { v4: uuidv4 } = require('uuid');
 
 const app = express();
@@ -28,155 +30,145 @@ const transporter = nodemailer.createTransport({
   tls: { rejectUnauthorized: false }
 });
 
-// ==================== LOCAL JSON STORAGE ====================
-const DATA_DIR = path.join(__dirname, 'data');
+// ==================== SQLITE STORAGE ====================
+const DB_PATH = path.join(__dirname, 'data.sqlite');
+let db;
 
-function ensureDataFiles() {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-  const files = ['users.json', 'bills.json', 'payments.json', 'analytics.json'];
-  files.forEach((fileName) => {
-    const filePath = path.join(DATA_DIR, fileName);
-    if (!fs.existsSync(filePath)) {
-      fs.writeFileSync(filePath, '[]', 'utf8');
-    }
+function initSqlite() {
+  db = new sqlite3.Database(DB_PATH, (err) => {
+    if (err) throw err;
+  });
+
+  db.serialize(() => {
+    db.run(`CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      email TEXT UNIQUE,
+      password TEXT,
+      fullname TEXT,
+      phone TEXT,
+      address TEXT,
+      account_number TEXT UNIQUE,
+      meter_number TEXT,
+      user_type TEXT,
+      status TEXT,
+      created_at TEXT,
+      updated_at TEXT
+    )`);
+
+    db.run(`CREATE TABLE IF NOT EXISTS bills (
+      id TEXT PRIMARY KEY,
+      user_id TEXT,
+      bill_number TEXT UNIQUE,
+      billing_month TEXT,
+      previous_reading REAL,
+      current_reading REAL,
+      units_consumed REAL,
+      rate_per_unit REAL,
+      amount_due REAL,
+      amount_paid REAL,
+      status TEXT,
+      due_date TEXT,
+      created_at TEXT,
+      updated_at TEXT
+    )`);
+
+    db.run(`CREATE TABLE IF NOT EXISTS payments (
+      id TEXT PRIMARY KEY,
+      bill_id TEXT,
+      user_id TEXT,
+      amount_paid REAL,
+      payment_method TEXT,
+      transaction_id TEXT UNIQUE,
+      receipt_number TEXT UNIQUE,
+      payment_date TEXT,
+      status TEXT,
+      created_at TEXT
+    )`);
+
+    db.run(`CREATE TABLE IF NOT EXISTS analytics (
+      id TEXT PRIMARY KEY,
+      user_id TEXT,
+      event_type TEXT,
+      event_data TEXT,
+      created_at TEXT
+    )`);
   });
 }
 
-function readCollection(collectionName) {
-  ensureDataFiles();
-  const filePath = path.join(DATA_DIR, `${collectionName}.json`);
-  if (!fs.existsSync(filePath)) {
-    fs.writeFileSync(filePath, '[]', 'utf8');
-    return [];
-  }
-
-  try {
-    const content = fs.readFileSync(filePath, 'utf8').trim();
-    return content ? JSON.parse(content) : [];
-  } catch (err) {
-    console.warn(`Could not read ${collectionName} storage:`, err.message);
-    return [];
-  }
-}
-
-function writeCollection(collectionName, items) {
-  ensureDataFiles();
-  const filePath = path.join(DATA_DIR, `${collectionName}.json`);
-  fs.writeFileSync(filePath, JSON.stringify(items, null, 2), 'utf8');
-}
-
-function createPersistedDocument(collectionName, data = {}, persisted = false) {
-  const doc = { ...data };
-  doc.__collectionName = collectionName;
-  doc.__isNew = !persisted;
-
-  doc.save = async function save() {
-    const payload = { ...doc };
-    delete payload.save;
-    delete payload.toObject;
-    delete payload.__collectionName;
-    delete payload.__isNew;
-
-    if (!payload.id) {
-      payload.id = uuidv4();
-    }
-
-    const items = readCollection(collectionName);
-    const existingIndex = items.findIndex((item) => item.id === payload.id);
-    if (existingIndex >= 0) {
-      items[existingIndex] = { ...items[existingIndex], ...payload };
-    } else {
-      items.push(payload);
-    }
-
-    writeCollection(collectionName, items);
-    Object.assign(doc, payload);
-    doc.__isNew = false;
-    return doc;
-  };
-
-  doc.toObject = function toObject() {
-    const payload = { ...doc };
-    delete payload.save;
-    delete payload.toObject;
-    delete payload.__collectionName;
-    delete payload.__isNew;
-    return payload;
-  };
-
-  return doc;
-}
-
-function normalizeValue(value) {
-  if (value instanceof Date) return value.getTime();
-  if (typeof value === 'string' && !Number.isNaN(Date.parse(value))) {
-    return new Date(value).getTime();
-  }
-  return value;
-}
-
-function matchesQuery(item, query = {}) {
-  if (!query || Object.keys(query).length === 0) return true;
-
-  if (query.$or) {
-    return query.$or.some((condition) => matchesQuery(item, condition));
-  }
-
-  return Object.entries(query).every(([key, expected]) => {
-    const actual = item[key];
-    if (expected && typeof expected === 'object' && !Array.isArray(expected)) {
-      if (expected.$gte !== undefined) return normalizeValue(actual) >= normalizeValue(expected.$gte);
-      if (expected.$lt !== undefined) return normalizeValue(actual) < normalizeValue(expected.$lt);
-      if (expected.$in !== undefined) return expected.$in.includes(actual);
-      if (expected.$ne !== undefined) return actual !== expected.$ne;
-      return false;
-    }
-
-    return actual === expected;
+function runSql(sql, params = []) {
+  return new Promise((resolve, reject) => {
+    db.run(sql, params, function (err) {
+      if (err) return reject(err);
+      resolve(this);
+    });
   });
 }
 
-function createModel(collectionName) {
-  function Model(data = {}) {
-    return createPersistedDocument(collectionName, data);
-  }
+function getSql(sql, params = []) {
+  return new Promise((resolve, reject) => {
+    db.all(sql, params, (err, rows) => {
+      if (err) return reject(err);
+      resolve(rows);
+    });
+  });
+}
+
+function toRow(item) {
+  return { ...item };
+}
+
+function createModel(tableName) {
+  const Model = function Model(data = {}) {
+    return { ...data, save: async function save() {
+      const payload = { ...this };
+      delete payload.save;
+      if (!payload.id) payload.id = uuidv4();
+      const columns = Object.keys(payload);
+      const placeholders = columns.map(() => '?').join(',');
+      const values = columns.map((key) => payload[key]);
+      const existing = await Model.findOne({ id: payload.id });
+      if (existing) {
+        const assignments = columns.filter((key) => key !== 'id').map((key) => `${key} = ?`).join(', ');
+        const updateValues = columns.filter((key) => key !== 'id').map((key) => payload[key]);
+        await runSql(`UPDATE ${tableName} SET ${assignments} WHERE id = ?`, [...updateValues, payload.id]);
+      } else {
+        await runSql(`INSERT INTO ${tableName} (${columns.join(', ')}) VALUES (${placeholders})`, values);
+      }
+      return payload;
+    } };
+  };
 
   Model.findOne = async function findOne(query = {}) {
-    const items = readCollection(collectionName);
-    const match = items.find((item) => matchesQuery(item, query));
-    return match ? createPersistedDocument(collectionName, match, true) : null;
+    const entries = Object.entries(query);
+    if (!entries.length) {
+      const rows = await getSql(`SELECT * FROM ${tableName} ORDER BY created_at DESC LIMIT 1`);
+      return rows[0] ? toRow(rows[0]) : null;
+    }
+
+    const where = entries.map(([key]) => `${key} = ?`).join(' AND ');
+    const values = entries.map(([, value]) => value);
+    const rows = await getSql(`SELECT * FROM ${tableName} WHERE ${where} LIMIT 1`, values);
+    return rows[0] ? toRow(rows[0]) : null;
   };
 
   Model.find = function find(query = {}) {
-    const items = readCollection(collectionName).filter((item) => matchesQuery(item, query));
-    const resultSet = items.map((item) => createPersistedDocument(collectionName, item, true));
-
-    resultSet.sort = function sort(spec = {}) {
-      const entries = Object.entries(spec);
-      if (!entries.length) return this;
-      const [field, direction] = entries[0];
-      const multiplier = direction < 0 ? -1 : 1;
-      this.sort((a, b) => {
-        const aValue = normalizeValue(a[field]);
-        const bValue = normalizeValue(b[field]);
-        if (typeof aValue === 'number' && typeof bValue === 'number') {
-          return (aValue - bValue) * multiplier;
-        }
-        return String(aValue).localeCompare(String(bValue)) * multiplier;
-      });
-      return this;
+    const entries = Object.entries(query);
+    const where = entries.length ? `WHERE ${entries.map(([key]) => `${key} = ?`).join(' AND ')}` : '';
+    const values = entries.map(([, value]) => value);
+    return {
+      async then(resolve) {
+        const rows = await getSql(`SELECT * FROM ${tableName} ${where} ORDER BY created_at DESC`, values);
+        resolve(rows.map(toRow));
+      }
     };
-
-    resultSet.limit = function limit(count) {
-      return this.slice(0, count);
-    };
-
-    return resultSet;
   };
 
   Model.countDocuments = async function countDocuments(query = {}) {
-    const items = readCollection(collectionName);
-    return items.filter((item) => matchesQuery(item, query)).length;
+    const entries = Object.entries(query);
+    const where = entries.length ? `WHERE ${entries.map(([key]) => `${key} = ?`).join(' AND ')}` : '';
+    const values = entries.map(([, value]) => value);
+    const rows = await getSql(`SELECT COUNT(*) as count FROM ${tableName} ${where}`, values);
+    return rows[0].count;
   };
 
   Model.findOneAndUpdate = async function findOneAndUpdate(query = {}, updates = {}) {
@@ -188,12 +180,10 @@ function createModel(collectionName) {
   };
 
   Model.findOneAndDelete = async function findOneAndDelete(query = {}) {
-    const items = readCollection(collectionName);
-    const itemIndex = items.findIndex((item) => matchesQuery(item, query));
-    if (itemIndex < 0) return null;
-    const [deleted] = items.splice(itemIndex, 1);
-    writeCollection(collectionName, items);
-    return createPersistedDocument(collectionName, deleted, true);
+    const item = await Model.findOne(query);
+    if (!item) return null;
+    await runSql(`DELETE FROM ${tableName} WHERE id = ?`, [item.id]);
+    return item;
   };
 
   return Model;
@@ -209,9 +199,9 @@ let dbConnected = false;
 
 async function initDb() {
   try {
-    ensureDataFiles();
+    initSqlite();
     dbConnected = true;
-    console.log('Local JSON storage initialized');
+    console.log('SQLite storage initialized');
 
     const admin = await User.findOne({ email: ADMIN_EMAIL });
     if (!admin) {
@@ -271,8 +261,8 @@ app.get('/api/db-status', (req, res) => {
     status: dbConnected ? 'connected' : 'offline',
     connected: dbConnected,
     configured: true,
-    dbName: 'local-json',
-    message: dbConnected ? 'Database connected locally via JSON files.' : 'Database offline.'
+    dbName: 'sqlite',
+    message: dbConnected ? 'Database connected locally via SQLite.' : 'Database offline.'
   });
 });
 
