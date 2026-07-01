@@ -1,85 +1,164 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="sw">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sign Up | Mickey Water</title>
+  <title>Jisajili | Mickey Water</title>
+  <meta name="theme-color" content="#2563eb">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icon-192.png">
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { min-height: 100vh; font-family: 'Inter', sans-serif; background: #0f172a; color: #fff; }
-    .site-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; max-width: 1180px; margin: 0 auto; }
-    .site-brand { font-size: 1.2rem; font-weight: 800; letter-spacing: 0.06em; }
-    .site-nav { display: flex; gap: 16px; flex-wrap: wrap; }
-    .site-nav a { color: rgba(255,255,255,0.7); text-decoration: none; font-weight: 600; font-size: 0.9rem; }
-    .page-shell { display: grid; place-items: center; min-height: calc(100vh - 88px); padding: 20px; }
-    .auth-card { width: min(550px, 100%); background: #ffffff; border-radius: 24px; padding: 40px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); color: #0f172a; }
-    .auth-card h1 { font-size: 1.8rem; margin-bottom: 8px; font-weight: 800; }
-    .auth-card p { margin-bottom: 24px; color: #475569; font-size: 0.95rem; }
-    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-    .field { margin-bottom: 12px; }
-    .field label { display: block; margin-bottom: 6px; font-weight: 600; color: #1e293b; font-size: 0.85rem; }
-    .field input { width: 100%; padding: 12px 14px; border-radius: 10px; border: 1px solid #e2e8f0; font-size: 0.95rem; }
-    .button { width: 100%; padding: 14px; border-radius: 12px; border: none; color: white; background: #059669; font-weight: 700; font-size: 1rem; cursor: pointer; margin-top: 10px; }
-    .links { margin-top: 20px; text-align: center; font-size: 0.9rem; }
-    .links a { color: #2563eb; text-decoration: none; font-weight: 700; }
-    @media (max-width: 500px) { .form-grid { grid-template-columns: 1fr; } }
+    *{box-sizing:border-box;margin:0;padding:0}
+    :root{--primary:#2563eb;--primary-dark:#1d4ed8;--bg:#0f172a;--surface:rgba(255,255,255,0.06);--border:rgba(255,255,255,0.1);--text:#f8fafc;--text2:rgba(255,255,255,0.7)}
+    body{min-height:100vh;font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column}
+    .nav{padding:16px 24px;display:flex;justify-content:space-between;align-items:center;max-width:1200px;margin:0 auto;width:100%}
+    .logo{font-size:1.2rem;font-weight:800;display:flex;align-items:center;gap:8px;color:var(--text);text-decoration:none}
+    .logo-icon{width:32px;height:32px;background:var(--primary);border-radius:8px;display:grid;place-items:center;font-size:0.9rem}
+    .nav-links{display:flex;gap:8px}
+    .nav-links a{color:var(--text2);text-decoration:none;font-weight:600;font-size:0.85rem;padding:8px 14px;border-radius:10px;transition:0.2s}
+    .nav-links a:hover{background:var(--surface)}
+    .page{flex:1;display:grid;place-items:center;padding:24px}
+    .card{width:min(560px,100%);background:#ffffff;border-radius:24px;padding:40px 36px;box-shadow:0 25px 60px rgba(0,0,0,0.4);color:#0f172a}
+    .card-header{margin-bottom:24px}
+    .card-header h1{font-size:1.7rem;font-weight:800;margin-bottom:6px}
+    .card-header p{color:#64748b;font-size:0.92rem;line-height:1.6}
+    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    .field{margin-bottom:4px}
+    .field.full{grid-column:span 2}
+    .field label{display:block;margin-bottom:5px;font-weight:600;color:#334155;font-size:0.85rem}
+    .field input{width:100%;padding:12px 14px;border-radius:12px;border:1.5px solid #e2e8f0;font-size:0.92rem;transition:all 0.2s;background:#f8fafc;outline:none}
+    .field input:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(37,99,235,0.1);background:#fff}
+    .submit-btn{width:100%;padding:14px;border-radius:12px;border:none;color:#fff;background:#059669;font-weight:700;font-size:1rem;cursor:pointer;transition:all 0.2s;margin-top:12px}
+    .submit-btn:hover{background:#047857;transform:translateY(-1px);box-shadow:0 12px 30px rgba(5,150,105,0.2)}
+    .submit-btn:disabled{opacity:0.6;cursor:not-allowed;transform:none}
+    .links{margin-top:18px;text-align:center;font-size:0.88rem}
+    .links a{color:var(--primary);text-decoration:none;font-weight:600}
+    .alert{padding:12px 16px;border-radius:10px;font-size:0.88rem;margin-bottom:14px;display:none;font-weight:600}
+    .alert.error{background:#fef2f2;color:#dc2626;border:1px solid #fecaca}
+    .alert.success{background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0}
+    .alert.show{display:block}
+    .pw-strength{height:4px;border-radius:2px;margin-top:6px;background:#e2e8f0;overflow:hidden}
+    .pw-strength .bar{height:100%;border-radius:2px;transition:width 0.3s,background 0.3s}
+    @media(max-width:500px){.form-grid{grid-template-columns:1fr}.field.full{grid-column:span 1}.card{padding:28px 20px}}
   </style>
 </head>
 <body>
-  <header class="site-header">
-    <div class="site-brand">💧 Mickey Water</div>
-    <nav class="site-nav">
-      <a href="index.html">Home</a>
-      <a href="login.html">Login</a>
-      <a href="records.html">Records</a>
-    </nav>
-  </header>
+  <nav class="nav">
+    <a href="/" class="logo"><div class="logo-icon">MW</div> Mickey Water</a>
+    <div class="nav-links">
+      <a href="/">Nyumbani</a>
+      <a href="/login">Ingia</a>
+    </div>
+  </nav>
 
-  <main class="page-shell">
-    <section class="auth-card">
-      <h1>Create account</h1>
-      <p>Jisajili leo ili kuanza kusimamia ankara zako za maji.</p>
+  <main class="page">
+    <section class="card">
+      <div class="card-header">
+        <h1>Fungua Akaunti</h1>
+        <p>Jisajili leo ili kuanza kusimamia ankara zako za maji kwa urahisi.</p>
+      </div>
+      <div id="alert" class="alert"></div>
       <form id="signupForm">
         <div class="form-grid">
-          <div class="field"><label for="fullname">Full name</label><input id="fullname" type="text" placeholder="John Doe" required></div>
-          <div class="field"><label for="email">Email</label><input id="email" type="email" placeholder="you@example.com" required></div>
-          <div class="field"><label for="phone">Phone</label><input id="phone" type="tel" placeholder="0712345678" required></div>
-          <div class="field"><label for="account">Account #</label><input id="account" type="text" placeholder="ACC-123" required></div>
-          <div class="field"><label for="password">Password</label><input id="password" type="password" placeholder="••••••••" required></div>
-          <div class="field"><label for="confirmPassword">Confirm</label><input id="confirmPassword" type="password" placeholder="••••••••" required></div>
+          <div class="field full">
+            <label for="fullname">Jina kamili</label>
+            <input id="fullname" type="text" placeholder="Jina la kwanza na la mwisho" required>
+          </div>
+          <div class="field">
+            <label for="email">Barua pepe</label>
+            <input id="email" type="email" placeholder="mfano@email.com" required>
+          </div>
+          <div class="field">
+            <label for="phone">Namba ya simu</label>
+            <input id="phone" type="tel" placeholder="0712345678" required>
+          </div>
+          <div class="field">
+            <label for="account">Namba ya Akaunti</label>
+            <input id="account" type="text" placeholder="ACC-123" required>
+          </div>
+          <div class="field">
+            <label for="address">Anwani / Eneo</label>
+            <input id="address" type="text" placeholder="Eneo lako">
+          </div>
+          <div class="field">
+            <label for="password">Neno la siri</label>
+            <input id="password" type="password" placeholder="Angalau herufi 6" required minlength="6">
+            <div class="pw-strength"><div class="bar" id="pwBar"></div></div>
+          </div>
+          <div class="field">
+            <label for="confirmPassword">Thibitisha neno la siri</label>
+            <input id="confirmPassword" type="password" placeholder="Rudia neno la siri" required>
+          </div>
         </div>
-        <button class="button" type="submit">Create account</button>
+        <button class="submit-btn" type="submit" id="submitBtn">Jisajili Sasa</button>
       </form>
       <div class="links">
-        <a href="login.html">Already have an account?</a>
+        <a href="/login">Tayari una akaunti? Ingia hapa</a>
       </div>
     </section>
   </main>
 
   <script>
-    document.getElementById('signupForm').addEventListener('submit', async (event) => {
-      event.preventDefault();
+    function showAlert(msg, type) {
+      const el = document.getElementById('alert');
+      el.textContent = msg;
+      el.className = 'alert ' + type + ' show';
+      if (type !== 'success') setTimeout(() => el.classList.remove('show'), 5000);
+    }
+
+    document.getElementById('password').addEventListener('input', (e) => {
+      const bar = document.getElementById('pwBar');
+      const val = e.target.value;
+      let strength = 0;
+      if (val.length >= 6) strength++;
+      if (val.length >= 8) strength++;
+      if (/[A-Z]/.test(val) && /[0-9]/.test(val)) strength++;
+      if (/[^A-Za-z0-9]/.test(val)) strength++;
+      const colors = ['#ef4444', '#f59e0b', '#eab308', '#22c55e'];
+      const widths = ['25%', '50%', '75%', '100%'];
+      bar.style.width = strength > 0 ? widths[strength - 1] : '0%';
+      bar.style.background = strength > 0 ? colors[strength - 1] : '#e2e8f0';
+    });
+
+    document.getElementById('signupForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('submitBtn');
       const fullname = document.getElementById('fullname').value.trim();
       const email = document.getElementById('email').value.trim();
       const phone = document.getElementById('phone').value.trim();
       const account_number = document.getElementById('account').value.trim();
+      const address = document.getElementById('address').value.trim();
       const password = document.getElementById('password').value;
       const confirmPassword = document.getElementById('confirmPassword').value;
-      if (password !== confirmPassword) return alert('Passwords do not match');
+
+      if (password !== confirmPassword) return showAlert('Password hazilingani!', 'error');
+      if (password.length < 6) return showAlert('Password lazima iwe angalau herufi 6.', 'error');
+
+      btn.disabled = true;
+      btn.textContent = 'Inaendelea...';
       try {
-        const response = await fetch('/api/auth/signup', {
+        const res = await fetch('/api/auth/signup', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ fullname, email, phone, account_number, password })
+          body: JSON.stringify({ fullname, email, phone, account_number, address, password })
         });
-        const result = await response.json();
-        if (!response.ok) return alert(result.error || 'Signup failed. Please try again.');
-        alert(result.message || 'Account created successfully');
-        window.location.href = 'login.html';
-      } catch (error) {
-        alert('Imeshindwa kuunganisha kwenye seva. Tafadhali jaribu tena baadae.');
+        const data = await res.json();
+        if (!res.ok) {
+          showAlert(data.error || 'Usajili umeshindwa.', 'error');
+          btn.disabled = false;
+          btn.textContent = 'Jisajili Sasa';
+          return;
+        }
+        showAlert('Akaunti imeundwa! Unaelekezwa kwenye login...', 'success');
+        setTimeout(() => window.location.href = '/login', 1500);
+      } catch (err) {
+        showAlert('Huwezi kuunganisha na seva. Jaribu tena.', 'error');
+        btn.disabled = false;
+        btn.textContent = 'Jisajili Sasa';
       }
     });
+
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
   </script>
 </body>
 </html>

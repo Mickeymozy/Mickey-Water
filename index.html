@@ -1,98 +1,171 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="sw">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mickey Water - Professional Water Management</title>
+  <title>Mickey Water - Mfumo wa Kisasa wa Ankara za Maji</title>
+  <meta name="description" content="Mfumo wa kisasa wa kusimamia ankara za maji, malipo, na wateja.">
+  <meta name="theme-color" content="#2563eb">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icon-192.png">
+  <link rel="apple-touch-icon" href="/icon-192.png">
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; min-height: 100vh; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #fff; line-height: 1.5; }
-    nav { display: flex; justify-content: space-between; align-items: center; padding: 24px 40px; max-width: 1200px; margin: 0 auto; }
-    nav h1 { font-size: 24px; letter-spacing: -0.5px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
-    nav a { color: white; text-decoration: none; font-weight: 600; padding: 10px 20px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.1); transition: all 0.2s ease; font-size: 0.9rem; }
-    nav a:hover { background: rgba(255,255,255,0.12); }
-    .hero { padding: 120px 40px 80px; text-align: center; max-width: 900px; margin: 0 auto; }
-    .hero h1 { font-size: clamp(3rem, 5vw, 4.5rem); letter-spacing: -1px; line-height: 1.05; margin-bottom: 24px; }
-    .hero p { font-size: 1.1rem; color: rgba(255,255,255,0.82); max-width: 680px; margin: 0 auto 35px; line-height: 1.8; }
-    .hero .buttons { display: inline-flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
-    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; font-weight: 700; border-radius: 999px; padding: 16px 32px; border: none; cursor: pointer; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); text-decoration: none; }
-    .btn-primary { background: #2563eb; color: white; }
-    .btn-secondary { background: rgba(255,255,255,0.16); color: white; }
-    .btn:hover { transform: translateY(-3px); box-shadow: 0 20px 45px rgba(0,0,0,0.18); }
-    .features { display: grid; grid-template-columns: repeat(3, minmax(220px, 1fr)); gap: 22px; max-width: 1200px; margin: 0 auto 80px; padding: 0 40px; }
-    .feature-card { background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.14); border-radius: 24px; padding: 32px; min-height: 240px; display: flex; flex-direction: column; justify-content: flex-start; gap: 18px; }
-    .feature-card h3 { font-size: 1.25rem; margin-bottom: 8px; }
-    .feature-card p { font-size: 0.95rem; line-height: 1.7; color: rgba(255,255,255,0.78); }
-    .feature-icon { width: 56px; height: 56px; display: grid; place-items: center; border-radius: 18px; background: rgba(255,255,255,0.14); font-size: 1.6rem; }
-    .section { background: white; border-radius: 32px; padding: 48px 40px; max-width: 1100px; margin: 0 auto 80px; color: #102a43; }
-    .section h2 { font-size: 2rem; margin-bottom: 16px; }
-    .section p { color: #475569; line-height: 1.8; margin-bottom: 24px; }
-    .cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; }
-    .small-card { background: #f8fafc; border-radius: 24px; padding: 28px; box-shadow: 0 24px 50px rgba(15, 23, 42, 0.08); }
-    .small-card h3 { margin-bottom: 10px; font-size: 1rem; color: #334155; }
-    .small-card strong { display: block; font-size: 1.95rem; margin-top: 8px; color: #0f172a; }
-    footer { text-align: center; padding: 40px 20px; color: rgba(255,255,255,0.5); font-size: 0.85rem; border-top: 1px solid rgba(255,255,255,0.05); }
-    @media (max-width: 900px) { .features { grid-template-columns: 1fr; padding: 0 20px; } .section { padding: 36px 24px; } nav { flex-wrap: wrap; row-gap: 16px; justify-content: center; } }
-    @media (max-width: 640px) { .hero { padding-top: 90px; } .section { border-radius: 24px; } }
+    *{box-sizing:border-box;margin:0;padding:0}
+    :root{--primary:#2563eb;--primary-dark:#1d4ed8;--bg:#0f172a;--bg2:#1e293b;--surface:rgba(255,255,255,0.06);--border:rgba(255,255,255,0.1);--text:#f8fafc;--text2:rgba(255,255,255,0.7);--radius:16px;--radius-lg:24px}
+    body{font-family:'Inter','Segoe UI',system-ui,-apple-system,sans-serif;min-height:100vh;background:var(--bg);color:var(--text);line-height:1.6;overflow-x:hidden}
+    .nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:16px 24px;background:rgba(15,23,42,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--border)}
+    .nav-inner{max-width:1200px;margin:0 auto;display:flex;justify-content:space-between;align-items:center}
+    .logo{font-size:1.3rem;font-weight:800;display:flex;align-items:center;gap:8px;color:var(--text);text-decoration:none}
+    .logo-icon{width:36px;height:36px;background:var(--primary);border-radius:10px;display:grid;place-items:center;font-size:1.1rem}
+    .nav-links{display:flex;gap:8px;align-items:center}
+    .nav-links a{color:var(--text2);text-decoration:none;font-weight:600;font-size:0.9rem;padding:8px 16px;border-radius:999px;transition:all 0.2s}
+    .nav-links a:hover{background:var(--surface);color:var(--text)}
+    .nav-links .btn-nav{background:var(--primary);color:#fff;padding:10px 22px}
+    .nav-links .btn-nav:hover{background:var(--primary-dark)}
+    .hero{padding:140px 24px 80px;text-align:center;max-width:900px;margin:0 auto;position:relative}
+    .hero::before{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:600px;height:600px;background:radial-gradient(circle,rgba(37,99,235,0.15) 0%,transparent 70%);pointer-events:none}
+    .badge{display:inline-flex;align-items:center;gap:8px;padding:8px 18px;border-radius:999px;background:var(--surface);border:1px solid var(--border);font-size:0.85rem;color:var(--text2);margin-bottom:24px}
+    .badge .dot{width:8px;height:8px;border-radius:50%;background:#22c55e;animation:pulse 2s infinite}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+    .hero h1{font-size:clamp(2.5rem,5vw,4rem);font-weight:800;letter-spacing:-1.5px;line-height:1.1;margin-bottom:20px}
+    .hero h1 span{background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    .hero p{font-size:1.1rem;color:var(--text2);max-width:600px;margin:0 auto 32px;line-height:1.8}
+    .hero-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+    .btn{display:inline-flex;align-items:center;gap:10px;font-weight:700;border-radius:var(--radius);padding:14px 28px;border:none;cursor:pointer;transition:all 0.25s;text-decoration:none;font-size:0.95rem}
+    .btn-primary{background:var(--primary);color:#fff}
+    .btn-primary:hover{background:var(--primary-dark);transform:translateY(-2px);box-shadow:0 16px 40px rgba(37,99,235,0.25)}
+    .btn-outline{background:transparent;color:var(--text);border:1px solid var(--border)}
+    .btn-outline:hover{background:var(--surface)}
+    .features{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;max-width:1200px;margin:0 auto 80px;padding:0 24px}
+    .feature{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:32px;transition:all 0.3s}
+    .feature:hover{border-color:rgba(37,99,235,0.4);transform:translateY(-4px)}
+    .feature-icon{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;font-size:1.4rem;margin-bottom:18px}
+    .feature-icon.blue{background:rgba(37,99,235,0.15)}
+    .feature-icon.green{background:rgba(34,197,94,0.15)}
+    .feature-icon.purple{background:rgba(168,85,247,0.15)}
+    .feature-icon.orange{background:rgba(249,115,22,0.15)}
+    .feature-icon.teal{background:rgba(20,184,166,0.15)}
+    .feature-icon.red{background:rgba(239,68,68,0.15)}
+    .feature h3{font-size:1.15rem;margin-bottom:10px;font-weight:700}
+    .feature p{color:var(--text2);font-size:0.92rem;line-height:1.7}
+    .stats-section{background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:60px 24px;margin-bottom:80px}
+    .stats-grid{max-width:1000px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:32px;text-align:center}
+    .stat-item h3{font-size:2.5rem;font-weight:800;background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    .stat-item p{color:var(--text2);font-size:0.9rem;margin-top:6px}
+    .cta-section{text-align:center;padding:60px 24px 80px;max-width:700px;margin:0 auto}
+    .cta-section h2{font-size:2rem;font-weight:800;margin-bottom:16px}
+    .cta-section p{color:var(--text2);margin-bottom:28px;line-height:1.7}
+    .install-banner{display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px 24px;z-index:200;display:none;align-items:center;gap:16px;box-shadow:0 20px 60px rgba(0,0,0,0.4)}
+    .install-banner.show{display:flex}
+    .install-banner button{padding:10px 20px;border-radius:10px;border:none;font-weight:700;cursor:pointer}
+    .install-banner .install-btn{background:var(--primary);color:#fff}
+    .install-banner .dismiss-btn{background:var(--surface);color:var(--text2)}
+    footer{text-align:center;padding:40px 24px;color:var(--text2);font-size:0.85rem;border-top:1px solid var(--border)}
+    @media(max-width:640px){.nav-links a:not(.btn-nav){display:none}.features{grid-template-columns:1fr}.hero{padding-top:120px}}
   </style>
 </head>
 <body>
-  <nav>
-    <h1><span style="color: #60a5fa">💧</span> Mickey Water</h1>
-    <div>
-      <a href="login.html">Login</a>
-      <a style="background: white; color: #0f172a" href="records.html">Records</a>
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="/" class="logo"><div class="logo-icon">MW</div> Mickey Water</a>
+      <div class="nav-links">
+        <a href="/login">Ingia</a>
+        <a href="/signup">Jisajili</a>
+        <a href="/records">Rekodi</a>
+        <a href="/login" class="btn-nav">Anza Sasa</a>
+      </div>
     </div>
   </nav>
 
   <main class="hero">
-    <h1>Professional Water Billing & Customer Management</h1>
-    <p>Manage water bills, track payments, and access a modern customer dashboard with admin controls and receipt generation.</p>
-    <div class="buttons">
-      <a class="btn btn-primary" href="login.html">Get Started</a>
-      <a class="btn btn-secondary" href="#features">Learn More</a>
+    <div class="badge"><span class="dot"></span> Mfumo wa Kisasa wa Maji</div>
+    <h1>Simamia Ankara za <span>Maji</span> kwa Urahisi</h1>
+    <p>Mfumo kamili wa kusimamia ankara za maji, kufuatilia malipo, na kudhibiti wateja kwa njia ya kisasa na salama.</p>
+    <div class="hero-btns">
+      <a class="btn btn-primary" href="/login">Ingia kwenye Akaunti</a>
+      <a class="btn btn-outline" href="#features">Jifunze Zaidi</a>
     </div>
   </main>
 
   <section id="features" class="features">
-    <div class="feature-card">
-      <div class="feature-icon">📋</div>
-      <h3>Bills & Receipts</h3>
-      <p>Create professional water bills, allow payments, and download payment receipts instantly.</p>
+    <div class="feature">
+      <div class="feature-icon blue">MW</div>
+      <h3>Ankara za Maji</h3>
+      <p>Unda na usimamie ankara za maji kwa wateja wote. Fuatilia matumizi na malipo kwa urahisi mkubwa.</p>
     </div>
-    <div class="feature-card">
-      <div class="feature-icon">🔐</div>
-      <h3>Secure Authentication</h3>
-      <p>Login, sign up, and reset passwords securely with a role-based system for customers and admin.</p>
+    <div class="feature">
+      <div class="feature-icon green">$</div>
+      <h3>Malipo na Risiti</h3>
+      <p>Pokea malipo na utoe risiti moja kwa moja. Mfumo unafuatilia kila malipo yanayofanywa.</p>
     </div>
-    <div class="feature-card">
-      <div class="feature-icon">⚙️</div>
-      <h3>Admin Controls</h3>
-      <p>Admin can manage users, create bills, review analytics, and suspend accounts with access permissions.</p>
+    <div class="feature">
+      <div class="feature-icon purple">A</div>
+      <h3>Admin Dashboard</h3>
+      <p>Admin anaweza kuunda ankara, kuedit taarifa, na kusimamia wateja wote kutoka dashboard moja.</p>
     </div>
-  </section>
-
-  <section class="section">
-    <h2>Designed for modern water utilities</h2>
-    <p>This system is built to replace outdated JSON record storage with a proper database-backed workflow, polished UI, and scalable server architecture.</p>
-    <div class="cards-grid">
-      <div class="small-card">
-        <h3>Simple user flow</h3>
-        <strong>Login, pay, track.</strong>
-      </div>
-      <div class="small-card">
-        <h3>Fast deployment</h3>
-        <strong>Runs locally or on cloud.</strong>
-      </div>
-      <div class="small-card">
-        <h3>Responsive interface</h3>
-        <strong>Works on desktop and mobile.</strong>
-      </div>
+    <div class="feature">
+      <div class="feature-icon orange">U</div>
+      <h3>User Dashboard</h3>
+      <p>Wateja wanaweza kuangalia ankara zao zote za kila mwezi, kuchagua mwaka, na kuona historia kamili.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon teal">DB</div>
+      <h3>MongoDB Database</h3>
+      <p>Data yote inahifadhiwa kwenye MongoDB Atlas. Notification ya online/offline inaonyeshwa kwa admin.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon red">DL</div>
+      <h3>Installable App (PWA)</h3>
+      <p>Download app kwenye simu yako au kompyuta. Inafanya kazi offline na inaonekana kama app halisi.</p>
     </div>
   </section>
 
-  <footer>
-    © 2026 Mickey Water Management System. All rights reserved.
-  </footer>
+  <section class="stats-section">
+    <div class="stats-grid">
+      <div class="stat-item"><h3>100%</h3><p>Digital Billing</p></div>
+      <div class="stat-item"><h3>24/7</h3><p>Access Wakati Wote</p></div>
+      <div class="stat-item"><h3>PWA</h3><p>Downloadable App</p></div>
+      <div class="stat-item"><h3>SSL</h3><p>Usalama wa Data</p></div>
+    </div>
+  </section>
+
+  <section class="cta-section">
+    <h2>Tayari Kuanza?</h2>
+    <p>Jisajili leo na uanze kusimamia ankara za maji kwa njia ya kisasa. Bure na rahisi kutumia.</p>
+    <div class="hero-btns">
+      <a class="btn btn-primary" href="/signup">Fungua Akaunti</a>
+      <a class="btn btn-outline" href="/login">Tayari una Akaunti?</a>
+    </div>
+  </section>
+
+  <footer>&copy; 2026 Mickey Water Management System. Haki zote zimehifadhiwa.</footer>
+
+  <div id="installBanner" class="install-banner">
+    <span>Install Mickey Water kwenye kifaa chako</span>
+    <button class="install-btn" id="installBtn">Install</button>
+    <button class="dismiss-btn" onclick="document.getElementById('installBanner').classList.remove('show')">Baadaye</button>
+  </div>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
+
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      document.getElementById('installBanner').classList.add('show');
+    });
+
+    document.getElementById('installBtn').addEventListener('click', async () => {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        await deferredPrompt.userChoice;
+        deferredPrompt = null;
+        document.getElementById('installBanner').classList.remove('show');
+      }
+    });
+  </script>
 </body>
 </html>

@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ankara Zangu | Mickey Water</title>
+  <meta name="theme-color" content="#2563eb">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icon-192.png">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    :root{--primary:#2563eb;--primary-dark:#1d4ed8;--bg:#f1f5f9;--surface:#fff;--border:#e2e8f0;--text:#0f172a;--text2:#64748b;--success:#059669;--warning:#d97706;--danger:#dc2626}
+    body{min-height:100vh;font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text)}
+    .header{background:var(--surface);border-bottom:1px solid var(--border);padding:16px 24px;position:sticky;top:0;z-index:50}
+    .header-inner{max-width:1200px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+    .logo{font-size:1.15rem;font-weight:800;color:var(--primary);display:flex;align-items:center;gap:8px;text-decoration:none}
+    .logo-icon{width:32px;height:32px;background:var(--primary);border-radius:8px;display:grid;place-items:center;color:#fff;font-size:0.85rem;font-weight:800}
+    .nav{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+    .nav a,.nav button{text-decoration:none;color:var(--text2);font-weight:600;font-size:0.85rem;padding:8px 14px;border-radius:10px;border:none;background:transparent;cursor:pointer;transition:0.2s}
+    .nav a:hover,.nav button:hover{background:var(--bg)}
+    .container{max-width:1200px;margin:0 auto;padding:24px}
+    .page-title{margin-bottom:24px}
+    .page-title h1{font-size:1.6rem;font-weight:800;margin-bottom:4px}
+    .page-title p{color:var(--text2);font-size:0.92rem}
+    .controls{display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap;align-items:center}
+    .year-select{padding:10px 16px;border-radius:12px;border:1.5px solid var(--border);font-size:0.92rem;font-weight:600;background:var(--surface);cursor:pointer;outline:none}
+    .year-select:focus{border-color:var(--primary)}
+    .summary-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px}
+    .summary-card{background:var(--surface);border-radius:16px;padding:20px;border:1px solid var(--border)}
+    .summary-card .label{font-size:0.8rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px}
+    .summary-card .value{font-size:1.8rem;font-weight:800}
+    .summary-card .value.green{color:var(--success)}
+    .summary-card .value.orange{color:var(--warning)}
+    .summary-card .value.blue{color:var(--primary)}
+    .months-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-bottom:32px}
+    .month-card{background:var(--surface);border-radius:16px;padding:20px;border:1px solid var(--border);transition:all 0.2s;cursor:pointer}
+    .month-card:hover{border-color:var(--primary);box-shadow:0 8px 24px rgba(37,99,235,0.08)}
+    .month-card.active{border-color:var(--primary);box-shadow:0 8px 24px rgba(37,99,235,0.12)}
+    .month-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+    .month-name{font-weight:700;font-size:1rem}
+    .month-badge{padding:4px 10px;border-radius:999px;font-size:0.75rem;font-weight:700}
+    .month-badge.paid{background:#dcfce7;color:#047857}
+    .month-badge.pending{background:#fef3c7;color:#92400e}
+    .month-badge.no_bill{background:#f1f5f9;color:#94a3b8}
+    .month-details{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:0.88rem}
+    .month-details .detail{display:flex;flex-direction:column;gap:2px}
+    .month-details .detail-label{color:var(--text2);font-size:0.78rem}
+    .month-details .detail-value{font-weight:700}
+    .bills-section{background:var(--surface);border-radius:16px;padding:24px;border:1px solid var(--border);margin-bottom:24px}
+    .bills-section h2{font-size:1.2rem;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+    .bills-table{width:100%;border-collapse:collapse;font-size:0.9rem}
+    .bills-table th,.bills-table td{padding:12px 14px;text-align:left;border-bottom:1px solid var(--border)}
+    .bills-table th{background:var(--bg);color:var(--text2);font-weight:700;font-size:0.82rem;text-transform:uppercase;letter-spacing:0.03em}
+    .bills-table tr:last-child td{border-bottom:none}
+    .bills-table tr:hover td{background:#f8fafc}
+    .status-pill{padding:4px 10px;border-radius:999px;font-size:0.78rem;font-weight:700}
+    .status-pill.paid{background:#dcfce7;color:#047857}
+    .status-pill.pending,.status-pill.partially_paid{background:#fef3c7;color:#92400e}
+    .empty-state{text-align:center;padding:40px;color:var(--text2)}
+    .empty-state h3{margin-bottom:8px;font-size:1.1rem;color:var(--text)}
+    @media(max-width:640px){.months-grid{grid-template-columns:1fr}.summary-cards{grid-template-columns:1fr 1fr}.bills-table{font-size:0.82rem}.bills-table th,.bills-table td{padding:8px 10px}}
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-inner">
+      <a href="/" class="logo"><div class="logo-icon">MW</div> Mickey Water</a>
+      <nav class="nav">
+        <a href="/dashboard.html">Dashboard</a>
+        <a href="/records.html">Rekodi</a>
+        <button onclick="logout()">Toka</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="page-title">
+      <h1 id="pageTitle">Ankara Zangu za Mwaka</h1>
+      <p id="pageSubtitle">Angalia ankara zako zote za kila mwezi</p>
+    </div>
+
+    <div class="controls">
+      <select class="year-select" id="yearSelect" onchange="loadYearlySummary()"></select>
+    </div>
+
+    <div class="summary-cards">
+      <div class="summary-card">
+        <div class="label">Jumla ya Ankara</div>
+        <div class="value blue" id="totalBills">0</div>
+      </div>
+      <div class="summary-card">
+        <div class="label">Jumla ya Deni</div>
+        <div class="value orange" id="totalDue">TZS 0</div>
+      </div>
+      <div class="summary-card">
+        <div class="label">Jumla Iliyolipwa</div>
+        <div class="value green" id="totalPaid">TZS 0</div>
+      </div>
+      <div class="summary-card">
+        <div class="label">Baki</div>
+        <div class="value" id="balance" style="color:var(--danger)">TZS 0</div>
+      </div>
+    </div>
+
+    <div class="months-grid" id="monthsGrid"></div>
+
+    <div class="bills-section" id="billsSection" style="display:none;">
+      <h2 id="billsSectionTitle">Ankara za Mwezi</h2>
+      <div class="table-wrap" style="overflow-x:auto;">
+        <table class="bills-table">
+          <thead>
+            <tr>
+              <th>Ankara #</th>
+              <th>Tarehe</th>
+              <th>Matumizi</th>
+              <th>Deni</th>
+              <th>Imelipwa</th>
+              <th>Hali</th>
+            </tr>
+          </thead>
+          <tbody id="billsTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const token = localStorage.getItem('token');
+    const user = JSON.parse(localStorage.getItem('user') || 'null');
+    if (!token || !user) window.location.href = '/login.html';
+
+    document.getElementById('pageSubtitle').textContent = `${user.fullname} - ${user.account_number || ''}`;
+
+    const yearSelect = document.getElementById('yearSelect');
+    const currentYear = new Date().getFullYear();
+    for (let y = currentYear; y >= currentYear - 5; y--) {
+      const opt = document.createElement('option');
+      opt.value = y;
+      opt.textContent = `Mwaka ${y}`;
+      yearSelect.appendChild(opt);
+    }
+
+    async function loadYearlySummary() {
+      const year = yearSelect.value;
+      try {
+        const res = await fetch(`/api/bills/summary/yearly?year=${year}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('Failed');
+        const data = await res.json();
+
+        document.getElementById('totalBills').textContent = data.totalBills;
+        document.getElementById('totalDue').textContent = `TZS ${data.totalDue.toLocaleString()}`;
+        document.getElementById('totalPaid').textContent = `TZS ${data.totalPaid.toLocaleString()}`;
+        const balance = data.totalDue - data.totalPaid;
+        document.getElementById('balance').textContent = `TZS ${balance.toLocaleString()}`;
+
+        renderMonths(data.months);
+      } catch (err) {
+        document.getElementById('monthsGrid').innerHTML = '<div class="empty-state"><h3>Huwezi kupakia data</h3><p>Hakikisha intaneti yako inafanya kazi.</p></div>';
+      }
+    }
+
+    function renderMonths(months) {
+      const grid = document.getElementById('monthsGrid');
+      const monthNames = ['Januari', 'Februari', 'Machi', 'Aprili', 'Mei', 'Juni', 'Julai', 'Agosti', 'Septemba', 'Oktoba', 'Novemba', 'Desemba'];
+
+      grid.innerHTML = months.map((m, i) => {
+        const badgeClass = m.status === 'paid' ? 'paid' : m.status === 'pending' ? 'pending' : 'no_bill';
+        const badgeText = m.status === 'paid' ? 'Imelipwa' : m.status === 'pending' ? 'Haijalipwa' : 'Hakuna';
+        return `
+          <div class="month-card" onclick="showMonthBills(${i}, '${monthNames[i]}')">
+            <div class="month-header">
+              <span class="month-name">${monthNames[i]}</span>
+              <span class="month-badge ${badgeClass}">${badgeText}</span>
+            </div>
+            <div class="month-details">
+              <div class="detail"><span class="detail-label">Ankara</span><span class="detail-value">${m.bills.length}</span></div>
+              <div class="detail"><span class="detail-label">Deni</span><span class="detail-value">TZS ${m.totalDue.toLocaleString()}</span></div>
+              <div class="detail"><span class="detail-label">Imelipwa</span><span class="detail-value">TZS ${m.totalPaid.toLocaleString()}</span></div>
+              <div class="detail"><span class="detail-label">Baki</span><span class="detail-value">TZS ${Math.max(0, m.totalDue - m.totalPaid).toLocaleString()}</span></div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      window._monthsData = months;
+    }
+
+    function showMonthBills(monthIndex, monthName) {
+      const section = document.getElementById('billsSection');
+      const title = document.getElementById('billsSectionTitle');
+      const tbody = document.getElementById('billsTableBody');
+      const month = window._monthsData[monthIndex];
+
+      document.querySelectorAll('.month-card').forEach((c, i) => {
+        c.classList.toggle('active', i === monthIndex);
+      });
+
+      title.textContent = `Ankara za ${monthName}`;
+
+      if (!month.bills.length) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text2);padding:24px;">Hakuna ankara kwa mwezi huu</td></tr>';
+        section.style.display = 'block';
+        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+
+      tbody.innerHTML = month.bills.map(bill => {
+        const date = new Date(bill.billing_month).toLocaleDateString('sw-TZ');
+        const statusClass = bill.status === 'paid' ? 'paid' : 'pending';
+        const statusText = bill.status === 'paid' ? 'Imelipwa' : bill.status === 'partially_paid' ? 'Sehemu' : 'Haijalipwa';
+        return `<tr>
+          <td>${bill.bill_number}</td>
+          <td>${date}</td>
+          <td>${bill.units_consumed} units</td>
+          <td>TZS ${bill.amount_due.toLocaleString()}</td>
+          <td>TZS ${bill.amount_paid.toLocaleString()}</td>
+          <td><span class="status-pill ${statusClass}">${statusText}</span></td>
+        </tr>`;
+      }).join('');
+
+      section.style.display = 'block';
+      section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function logout() {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/login.html';
+    }
+
+    loadYearlySummary();
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
+  </script>
+</body>
+</html>

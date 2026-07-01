@@ -8,6 +8,18 @@
     {
       "src": "*.html",
       "use": "@vercel/static"
+    },
+    {
+      "src": "manifest.json",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "sw.js",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "icon-*.png",
+      "use": "@vercel/static"
     }
   ],
   "routes": [
@@ -42,6 +54,10 @@
     {
       "src": "/admin",
       "dest": "admin-dashboard.html"
+    },
+    {
+      "src": "/user-bills",
+      "dest": "user-bills.html"
     },
     {
       "src": "/(.*)",

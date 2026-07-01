@@ -1,126 +1,183 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="sw">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dashboard | Mickey Water</title>
+  <meta name="theme-color" content="#2563eb">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icon-192.png">
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { min-height: 100vh; font-family: 'Inter', sans-serif; background: #f1f5f9; color: #0f172a; }
-    .site-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; padding: 24px; background: #ffffff; box-shadow: 0 10px 30px rgba(15,23,42,0.08); }
-    .site-brand { font-size: 1.25rem; font-weight: 800; color: #2563eb; }
-    .nav-links { display: flex; gap: 14px; flex-wrap: wrap; }
-    .nav-links a, .nav-links button { text-decoration: none; color: #475569; font-weight: 700; background: transparent; border: none; cursor: pointer; padding: 8px 16px; border-radius: 10px; font-size: 0.9rem; transition: 0.2s; }
-    .nav-links a:hover, .nav-links button:hover { background: #eef2ff; }
-    .page-shell { max-width: 1180px; margin: 24px auto; padding: 0 24px 32px; }
-    .hero { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 24px; align-items: center; margin-bottom: 28px; }
-    .hero h1 { font-size: 1.8rem; font-weight: 800; }
-    .hero p { color: #475569; line-height: 1.7; margin-top: 10px; }
-    .button { padding: 10px 20px; border-radius: 10px; border: none; font-weight: 700; cursor: pointer; font-size: 0.9rem; }
-    .button.primary { background: #2563eb; color: white; }
-    .button.secondary { background: #fff; color: #0f172a; border: 1px solid #e2e8f0; }
-    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); gap: 20px; margin-bottom: 32px; }
-    .stat-card { background: white; border-radius: 24px; padding: 24px; box-shadow: 0 25px 60px rgba(15,23,42,0.08); }
-    .stat-card h2 { font-size: 1rem; color: #64748b; margin-bottom: 14px; }
-    .stat-card strong { display: block; font-size: 2rem; color: #0f172a; }
-    .content-card { background: white; border-radius: 24px; padding: 24px; box-shadow: 0 25px 60px rgba(15,23,42,0.08); }
-    table { width: 100%; border-collapse: collapse; border-radius: 24px; overflow: hidden; }
-    th, td { padding: 16px 18px; text-align: left; border-bottom: 1px solid #e2e8f0; }
-    th { background: #f8fafc; color: #475569; font-size: 0.95rem; }
-    tr:hover td { background: #f8fafc; }
-    .status { display: inline-flex; align-items: center; padding: 8px 12px; border-radius: 999px; font-size: 0.8rem; font-weight: 700; }
-    .status.paid { background: #d1fae5; color: #047857; }
-    .status.pending { background: #fef9c3; color: #92400e; }
-    .empty { padding: 32px; text-align: center; color: #64748b; }
-    @media (max-width: 760px) { .hero { flex-direction: column; } }
+    *{box-sizing:border-box;margin:0;padding:0}
+    :root{--primary:#2563eb;--primary-dark:#1d4ed8;--bg:#f1f5f9;--surface:#fff;--border:#e2e8f0;--text:#0f172a;--text2:#64748b;--success:#059669;--warning:#d97706;--danger:#dc2626}
+    body{min-height:100vh;font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text)}
+    .header{background:var(--surface);border-bottom:1px solid var(--border);padding:16px 24px;position:sticky;top:0;z-index:50}
+    .header-inner{max-width:1200px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+    .logo{font-size:1.15rem;font-weight:800;color:var(--primary);display:flex;align-items:center;gap:8px;text-decoration:none}
+    .logo-icon{width:32px;height:32px;background:var(--primary);border-radius:8px;display:grid;place-items:center;color:#fff;font-size:0.85rem;font-weight:800}
+    .nav{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+    .nav a,.nav button{text-decoration:none;color:var(--text2);font-weight:600;font-size:0.85rem;padding:8px 14px;border-radius:10px;border:none;background:transparent;cursor:pointer;transition:0.2s}
+    .nav a:hover,.nav button:hover{background:var(--bg)}
+    .nav a.active{background:rgba(37,99,235,0.1);color:var(--primary)}
+    .container{max-width:1200px;margin:0 auto;padding:24px}
+    .welcome{margin-bottom:24px;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px}
+    .welcome-text h1{font-size:1.6rem;font-weight:800;margin-bottom:4px}
+    .welcome-text p{color:var(--text2);font-size:0.92rem}
+    .welcome-actions{display:flex;gap:8px}
+    .btn{padding:10px 18px;border-radius:12px;border:none;font-weight:700;cursor:pointer;font-size:0.88rem;transition:0.2s;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+    .btn-primary{background:var(--primary);color:#fff}
+    .btn-primary:hover{background:var(--primary-dark)}
+    .btn-outline{background:var(--surface);color:var(--text);border:1px solid var(--border)}
+    .btn-outline:hover{background:var(--bg)}
+    .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px}
+    .stat{background:var(--surface);border-radius:16px;padding:20px;border:1px solid var(--border)}
+    .stat .label{font-size:0.78rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:8px}
+    .stat .value{font-size:1.8rem;font-weight:800}
+    .stat .value.blue{color:var(--primary)}
+    .stat .value.green{color:var(--success)}
+    .stat .value.orange{color:var(--warning)}
+    .stat .value.red{color:var(--danger)}
+    .card{background:var(--surface);border-radius:16px;padding:24px;border:1px solid var(--border);margin-bottom:20px}
+    .card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px}
+    .card-header h2{font-size:1.15rem;font-weight:700}
+    table{width:100%;border-collapse:collapse;font-size:0.9rem}
+    th,td{padding:12px 14px;text-align:left;border-bottom:1px solid var(--border)}
+    th{background:var(--bg);color:var(--text2);font-weight:700;font-size:0.82rem;text-transform:uppercase;letter-spacing:0.03em}
+    tr:last-child td{border-bottom:none}
+    tr:hover td{background:#f8fafc}
+    .pill{padding:4px 10px;border-radius:999px;font-size:0.78rem;font-weight:700}
+    .pill.paid{background:#dcfce7;color:#047857}
+    .pill.pending,.pill.partially_paid{background:#fef3c7;color:#92400e}
+    .empty{padding:32px;text-align:center;color:var(--text2);font-size:0.92rem}
+    .profile-card{display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:0.9rem}
+    .profile-item{display:flex;flex-direction:column;gap:2px}
+    .profile-item .p-label{font-size:0.78rem;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:0.03em}
+    .profile-item .p-value{font-weight:700}
+    @media(max-width:640px){.welcome{flex-direction:column}.stats{grid-template-columns:1fr 1fr}.profile-card{grid-template-columns:1fr}table{font-size:0.82rem}th,td{padding:8px 10px}}
   </style>
 </head>
 <body>
-  <header class="site-header">
-    <div class="site-brand">💧 Mickey Water</div>
-    <nav class="nav-links">
-      <a href="index.html">Home</a>
-      <a href="records.html">Records</a>
-      <button type="button" onclick="logout()">Logout</button>
-    </nav>
+  <header class="header">
+    <div class="header-inner">
+      <a href="/" class="logo"><div class="logo-icon">MW</div> Mickey Water</a>
+      <nav class="nav">
+        <a href="/dashboard.html" class="active">Dashboard</a>
+        <a href="/user-bills.html">Ankara Zangu</a>
+        <a href="/records.html">Rekodi</a>
+        <button onclick="logout()">Toka</button>
+      </nav>
+    </div>
   </header>
 
-  <main class="page-shell">
-    <section class="hero">
-      <div class="hero-title">
-        <h1>Customer Dashboard</h1>
-        <p id="welcomeText">Loading account details...</p>
+  <main class="container">
+    <div class="welcome">
+      <div class="welcome-text">
+        <h1 id="welcomeText">Karibu!</h1>
+        <p>Angalia ankara zako za maji na historia ya malipo</p>
       </div>
-      <button class="button secondary" onclick="logout()">Logout</button>
-    </section>
+      <div class="welcome-actions">
+        <a href="/user-bills.html" class="btn btn-primary">Ankara za Mwaka</a>
+        <button class="btn btn-outline" onclick="logout()">Toka</button>
+      </div>
+    </div>
 
-    <section class="stats-grid">
-      <div class="stat-card"><h2>Total Bills</h2><strong id="billCount">0</strong></div>
-      <div class="stat-card"><h2>Total Paid</h2><strong id="totalPaid">TZS 0</strong></div>
-      <div class="stat-card"><h2>Outstanding</h2><strong id="outstanding">TZS 0</strong></div>
-    </section>
+    <div class="stats">
+      <div class="stat"><div class="label">Jumla ya Ankara</div><div class="value blue" id="billCount">0</div></div>
+      <div class="stat"><div class="label">Jumla Imelipwa</div><div class="value green" id="totalPaid">TZS 0</div></div>
+      <div class="stat"><div class="label">Baki (Hazijalipwa)</div><div class="value orange" id="outstanding">TZS 0</div></div>
+    </div>
 
-    <section class="content-card">
-      <h2 style="margin-bottom:18px;">Recent Bills</h2>
-      <table>
-        <thead>
-          <tr><th>Bill #</th><th>Month</th><th>Due</th><th>Paid</th><th>Status</th><th>Actions</th></tr>
-        </thead>
-        <tbody id="billsTable"></tbody>
-      </table>
-      <div id="emptyState" class="empty">Loading bills...</div>
-    </section>
+    <div class="card">
+      <div class="card-header">
+        <h2>Taarifa za Akaunti</h2>
+      </div>
+      <div class="profile-card" id="profileCard">
+        <div class="profile-item"><span class="p-label">Jina</span><span class="p-value" id="pName">-</span></div>
+        <div class="profile-item"><span class="p-label">Email</span><span class="p-value" id="pEmail">-</span></div>
+        <div class="profile-item"><span class="p-label">Simu</span><span class="p-value" id="pPhone">-</span></div>
+        <div class="profile-item"><span class="p-label">Akaunti #</span><span class="p-value" id="pAccount">-</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h2>Ankara za Hivi Karibuni</h2>
+        <a href="/user-bills.html" class="btn btn-outline" style="font-size:0.82rem;padding:6px 14px;">Angalia Zote</a>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr><th>Ankara #</th><th>Mwezi</th><th>Matumizi</th><th>Deni</th><th>Imelipwa</th><th>Hali</th></tr>
+          </thead>
+          <tbody id="billsTable"></tbody>
+        </table>
+      </div>
+      <div id="emptyState" class="empty">Inapakia ankara...</div>
+    </div>
   </main>
 
   <script>
     const token = localStorage.getItem('token');
     const user = JSON.parse(localStorage.getItem('user') || 'null');
-    if (!token || !user) return window.location.href = 'login.html';
-    document.getElementById('welcomeText').textContent = `Karibu, ${user.fullname || user.email}`;
+    if (!token || !user) window.location.href = '/login.html';
+
+    document.getElementById('welcomeText').textContent = `Karibu, ${user.fullname || user.email}!`;
+    document.getElementById('pName').textContent = user.fullname || '-';
+    document.getElementById('pEmail').textContent = user.email || '-';
+    document.getElementById('pPhone').textContent = user.phone || '-';
+    document.getElementById('pAccount').textContent = user.account_number || '-';
 
     async function loadBills() {
       try {
-        const response = await fetch('/api/bills', { headers: { Authorization: `Bearer ${token}` } });
-        if (!response.ok) throw new Error('Unauthorized');
-        const bills = await response.json();
-        const totalPaid = bills.reduce((sum, bill) => sum + bill.amount_paid, 0);
-        const outstanding = bills.reduce((sum, bill) => sum + Math.max(0, bill.amount_due - bill.amount_paid), 0);
+        const res = await fetch('/api/bills', { headers: { Authorization: `Bearer ${token}` } });
+        if (!res.ok) throw new Error('Unauthorized');
+        const bills = await res.json();
+
+        const totalPaid = bills.reduce((s, b) => s + b.amount_paid, 0);
+        const outstanding = bills.reduce((s, b) => s + Math.max(0, b.amount_due - b.amount_paid), 0);
+
         document.getElementById('billCount').textContent = bills.length;
         document.getElementById('totalPaid').textContent = `TZS ${totalPaid.toLocaleString()}`;
         document.getElementById('outstanding').textContent = `TZS ${outstanding.toLocaleString()}`;
-        renderBills(bills);
-      } catch (error) {
-        window.location.href = 'login.html';
+
+        renderBills(bills.slice(0, 10));
+      } catch (err) {
+        document.getElementById('emptyState').textContent = 'Huwezi kupakia ankara. Hakikisha umeingia vizuri.';
       }
     }
 
     function renderBills(bills) {
       const tbody = document.getElementById('billsTable');
-      const emptyState = document.getElementById('emptyState');
+      const empty = document.getElementById('emptyState');
       if (!bills.length) {
         tbody.innerHTML = '';
-        emptyState.textContent = 'No bills were found for your account.';
+        empty.textContent = 'Hakuna ankara zilizoopatikana kwa akaunti yako.';
         return;
       }
-      emptyState.style.display = 'none';
+      empty.style.display = 'none';
       tbody.innerHTML = bills.map(bill => {
-        const date = new Date(bill.billing_month).toLocaleDateString();
+        const date = new Date(bill.billing_month).toLocaleDateString('sw-TZ', { month: 'short', year: 'numeric' });
         const statusClass = bill.status === 'paid' ? 'paid' : 'pending';
-        return `<tr><td>${bill.bill_number}</td><td>${date}</td><td>TZS ${bill.amount_due.toLocaleString()}</td><td>TZS ${bill.amount_paid.toLocaleString()}</td><td><span class="status ${statusClass}">${bill.status.replace('_',' ')}</span></td><td><button class="button primary" style="font-size:0.85rem; padding:10px 14px;" onclick="openReceipt('${bill.id}')">Receipt</button></td></tr>`;
+        const statusText = bill.status === 'paid' ? 'Imelipwa' : bill.status === 'partially_paid' ? 'Sehemu' : 'Haijalipwa';
+        return `<tr>
+          <td style="font-weight:600">${bill.bill_number}</td>
+          <td>${date}</td>
+          <td>${bill.units_consumed} units</td>
+          <td>TZS ${bill.amount_due.toLocaleString()}</td>
+          <td>TZS ${bill.amount_paid.toLocaleString()}</td>
+          <td><span class="pill ${statusClass}">${statusText}</span></td>
+        </tr>`;
       }).join('');
-    }
-
-    function openReceipt(billId) {
-      window.open(`/api/receipt/${billId}`, '_blank');
     }
 
     function logout() {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      window.location.href = 'login.html';
+      window.location.href = '/login.html';
     }
 
     loadBills();
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
   </script>
 </body>
 </html>

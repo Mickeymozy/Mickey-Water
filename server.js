@@ -20,16 +20,13 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cors({ origin: '*', credentials: true }));
 app.use(express.static(path.join(__dirname)));
 
-// Configure Email Transporter
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
     user: process.env.EMAIL_USER || ADMIN_EMAIL,
     pass: process.env.EMAIL_PASS || process.env.ADMIN_PASSWORD
   },
-  tls: {
-    rejectUnauthorized: false
-  }
+  tls: { rejectUnauthorized: false }
 });
 
 // ==================== MONGODB SCHEMAS ====================
@@ -62,7 +59,8 @@ const BillSchema = new mongoose.Schema({
   amount_paid: { type: Number, default: 0 },
   status: String,
   due_date: Date,
-  created_at: { type: Date, default: Date.now }
+  created_at: { type: Date, default: Date.now },
+  updated_at: { type: Date, default: Date.now }
 });
 const Bill = mongoose.model('Bill', BillSchema);
 
@@ -90,15 +88,29 @@ const AnalyticsSchema = new mongoose.Schema({
 const Analytics = mongoose.model('Analytics', AnalyticsSchema);
 
 // ==================== DATABASE INITIALIZATION ====================
+let dbConnected = false;
+
 async function initDb() {
   if (!MONGODB_URI) {
     throw new Error('MONGODB_URI is missing in .env');
   }
 
   await mongoose.connect(MONGODB_URI);
-  console.log('✅ Database connected to MongoDB Atlas');
+  dbConnected = true;
+  console.log('Database connected to MongoDB Atlas');
 
-  // Admin check
+  mongoose.connection.on('disconnected', () => {
+    dbConnected = false;
+    console.log('MongoDB disconnected');
+  });
+  mongoose.connection.on('reconnected', () => {
+    dbConnected = true;
+    console.log('MongoDB reconnected');
+  });
+  mongoose.connection.on('error', () => {
+    dbConnected = false;
+  });
+
   const admin = await User.findOne({ email: ADMIN_EMAIL });
   if (!admin) {
     const hashed = await bcrypt.hash(ADMIN_PASSWORD, 10);
@@ -109,21 +121,23 @@ async function initDb() {
       account_number: 'ADMIN-001',
       user_type: 'admin'
     }).save();
-    console.log('✅ Admin initialized');
+    console.log('Admin initialized');
   }
 }
 
 // ==================== AUTH HELPERS ====================
 function generateToken(user) {
-  return jwt.sign({ id: user.id, email: user.email, user_type: user.user_type }, JWT_SECRET, { expiresIn: '7d' });
+  return jwt.sign(
+    { id: user.id, email: user.email, user_type: user.user_type },
+    JWT_SECRET,
+    { expiresIn: '7d' }
+  );
 }
 
 function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
-
   if (!token) return res.status(401).json({ error: 'Access token required' });
-
   jwt.verify(token, JWT_SECRET, (err, user) => {
     if (err) return res.status(403).json({ error: 'Invalid or expired token' });
     req.user = user;
@@ -144,6 +158,17 @@ async function logEvent(userId, eventType, eventData = {}) {
     await new Analytics({ user_id: userId, event_type: eventType, event_data: eventData }).save();
   } catch (e) { console.warn('Logging failed'); }
 }
+
+// ==================== DATABASE STATUS ====================
+app.get('/api/db-status', (req, res) => {
+  const state = mongoose.connection.readyState;
+  const states = { 0: 'disconnected', 1: 'connected', 2: 'connecting', 3: 'disconnecting' };
+  res.json({
+    status: states[state] || 'unknown',
+    connected: state === 1,
+    dbName: mongoose.connection.name || null
+  });
+});
 
 // ==================== AUTH ROUTES ====================
 app.post('/api/auth/signup', async (req, res) => {
@@ -181,14 +206,16 @@ app.post('/api/auth/login', async (req, res) => {
       id: user.id,
       email: user.email,
       fullname: user.fullname,
-      user_type: user.user_type
+      user_type: user.user_type,
+      phone: user.phone,
+      account_number: user.account_number,
+      address: user.address
     }
   });
 });
 
 app.post('/api/auth/forgot-password', async (req, res) => {
   const { email } = req.body;
-
   const user = await User.findOne({ email });
   if (!user) return res.status(404).json({ error: 'Email not found' });
 
@@ -229,13 +256,40 @@ app.post('/api/auth/reset-password', async (req, res) => {
 app.get('/api/profile', authenticateToken, async (req, res) => {
   const user = await User.findOne({ id: req.user.id });
   if (!user) return res.status(404).json({ error: 'User not found' });
-  res.json({ id: user.id, email: user.email, fullname: user.fullname, user_type: user.user_type });
+  res.json({
+    id: user.id,
+    email: user.email,
+    fullname: user.fullname,
+    user_type: user.user_type,
+    phone: user.phone,
+    account_number: user.account_number,
+    address: user.address
+  });
 });
 
 // ==================== BILLING ROUTES ====================
 app.get('/api/bills', authenticateToken, async (req, res) => {
-  const bills = await Bill.find({ user_id: req.user.id }).sort({ billing_month: -1 });
-  res.json(bills);
+  const { year } = req.query;
+  const query = { user_id: req.user.id };
+
+  if (year) {
+    const startDate = new Date(parseInt(year), 0, 1);
+    const endDate = new Date(parseInt(year) + 1, 0, 1);
+    query.billing_month = { $gte: startDate, $lt: endDate };
+  }
+
+  const bills = await Bill.find(query).sort({ billing_month: -1 });
+
+  const billsWithUser = await Promise.all(bills.map(async (bill) => {
+    const user = await User.findOne({ id: bill.user_id });
+    return {
+      ...bill.toObject(),
+      fullname: user ? user.fullname : 'Unknown',
+      account_number: user ? user.account_number : 'N/A'
+    };
+  }));
+
+  res.json(billsWithUser);
 });
 
 app.get('/api/bills/:billId', authenticateToken, async (req, res) => {
@@ -243,6 +297,42 @@ app.get('/api/bills/:billId', authenticateToken, async (req, res) => {
   if (!bill) return res.status(404).json({ error: 'Bill not found' });
   const payments = await Payment.find({ bill_id: req.params.billId });
   res.json({ bill, payments });
+});
+
+// Get yearly summary for a user
+app.get('/api/bills/summary/yearly', authenticateToken, async (req, res) => {
+  const { year } = req.query;
+  const currentYear = year ? parseInt(year) : new Date().getFullYear();
+  const startDate = new Date(currentYear, 0, 1);
+  const endDate = new Date(currentYear + 1, 0, 1);
+
+  const bills = await Bill.find({
+    user_id: req.user.id,
+    billing_month: { $gte: startDate, $lt: endDate }
+  }).sort({ billing_month: 1 });
+
+  const months = [];
+  for (let m = 0; m < 12; m++) {
+    const monthBills = bills.filter(b => new Date(b.billing_month).getMonth() === m);
+    const totalDue = monthBills.reduce((s, b) => s + b.amount_due, 0);
+    const totalPaid = monthBills.reduce((s, b) => s + b.amount_paid, 0);
+    months.push({
+      month: m,
+      monthName: new Date(currentYear, m).toLocaleString('sw-TZ', { month: 'long' }),
+      bills: monthBills,
+      totalDue,
+      totalPaid,
+      status: monthBills.length === 0 ? 'no_bill' : totalPaid >= totalDue ? 'paid' : 'pending'
+    });
+  }
+
+  res.json({
+    year: currentYear,
+    totalBills: bills.length,
+    totalDue: bills.reduce((s, b) => s + b.amount_due, 0),
+    totalPaid: bills.reduce((s, b) => s + b.amount_paid, 0),
+    months
+  });
 });
 
 // ==================== PAYMENT ROUTES ====================
@@ -266,10 +356,10 @@ app.post('/api/payments', authenticateToken, async (req, res) => {
   bill.status = bill.amount_paid >= bill.amount_due ? 'paid' : 'partially_paid';
   await bill.save();
 
-  await logEvent(req.user.id, 'payment_created', { 
-    billId, 
-    amountPaid, 
-    receiptNumber: payment.receipt_number 
+  await logEvent(req.user.id, 'payment_created', {
+    billId,
+    amountPaid,
+    receiptNumber: payment.receipt_number
   });
   res.json({ message: 'Payment recorded', receiptNumber: payment.receipt_number });
 });
@@ -281,10 +371,15 @@ app.get('/api/receipt/:paymentOrBillId', authenticateToken, async (req, res) => 
   }).sort({ payment_date: -1 });
 
   if (!payment) return res.status(404).json({ error: 'Receipt not found' });
-  
+
   const bill = await Bill.findOne({ id: payment.bill_id });
   const user = await User.findOne({ id: req.user.id });
-  res.send(generateReceiptHTML({ ...payment._doc, bill_number: bill.bill_number, fullname: user.fullname, email: user.email }));
+  res.send(generateReceiptHTML({
+    ...payment._doc,
+    bill_number: bill ? bill.bill_number : 'N/A',
+    fullname: user ? user.fullname : 'N/A',
+    email: user ? user.email : 'N/A'
+  }));
 });
 
 // ==================== ADMIN ROUTES ====================
@@ -296,9 +391,28 @@ app.get('/api/admin/users', authenticateToken, requireAdmin, async (req, res) =>
 app.get('/api/admin/users/:userId', authenticateToken, requireAdmin, async (req, res) => {
   const user = await User.findOne({ id: req.params.userId });
   if (!user) return res.status(404).json({ error: 'User not found' });
-  const bills = await Bill.find({ user_id: req.params.userId }).sort({ billing_month: -1 }).limit(12);
+  const bills = await Bill.find({ user_id: req.params.userId }).sort({ billing_month: -1 });
   const payments = await Payment.find({ user_id: req.params.userId }).sort({ payment_date: -1 }).limit(20);
   res.json({ user, recentBills: bills, recentPayments: payments });
+});
+
+// Admin: Update user info
+app.put('/api/admin/users/:userId', authenticateToken, requireAdmin, async (req, res) => {
+  const { fullname, email, phone, address, account_number, meter_number } = req.body;
+  const updates = {};
+  if (fullname) updates.fullname = fullname;
+  if (email) updates.email = email;
+  if (phone) updates.phone = phone;
+  if (address) updates.address = address;
+  if (account_number) updates.account_number = account_number;
+  if (meter_number) updates.meter_number = meter_number;
+  updates.updated_at = new Date();
+
+  const user = await User.findOneAndUpdate({ id: req.params.userId }, updates, { new: true });
+  if (!user) return res.status(404).json({ error: 'User not found' });
+
+  await logEvent(req.user.id, 'user_updated', { userId: req.params.userId, updates });
+  res.json({ message: 'User updated successfully', user });
 });
 
 app.put('/api/admin/users/:userId/status', authenticateToken, requireAdmin, async (req, res) => {
@@ -308,24 +422,129 @@ app.put('/api/admin/users/:userId/status', authenticateToken, requireAdmin, asyn
   res.json({ message: 'User status updated' });
 });
 
+// Admin: Create bill
 app.post('/api/admin/bills', authenticateToken, requireAdmin, async (req, res) => {
-  const { userId, previousReading, currentReading, ratePerUnit } = req.body;
+  const { userId, previousReading, currentReading, ratePerUnit, billingMonth } = req.body;
   const units = currentReading - previousReading;
+
+  const billDate = billingMonth ? new Date(billingMonth) : new Date();
+
   const bill = await new Bill({
     user_id: userId,
     bill_number: `BIL-${Date.now()}`,
-    billing_month: new Date(),
+    billing_month: billDate,
     previous_reading: previousReading,
     current_reading: currentReading,
     units_consumed: units,
     rate_per_unit: ratePerUnit || 2000,
     amount_due: units * (ratePerUnit || 2000),
     status: 'pending',
-    due_date: new Date(Date.now() + 30*24*60*60*1000)
+    due_date: new Date(billDate.getTime() + 30 * 24 * 60 * 60 * 1000)
   }).save();
 
   await logEvent(req.user.id, 'bill_created', { userId, billNumber: bill.bill_number });
-  res.status(201).json({ message: 'Bill created', billNumber: bill.bill_number });
+  res.status(201).json({ message: 'Bill created', billNumber: bill.bill_number, bill });
+});
+
+// Admin: Edit bill
+app.put('/api/admin/bills/:billId', authenticateToken, requireAdmin, async (req, res) => {
+  const { previousReading, currentReading, ratePerUnit, billingMonth, status, amount_paid } = req.body;
+  const bill = await Bill.findOne({ id: req.params.billId });
+  if (!bill) return res.status(404).json({ error: 'Bill not found' });
+
+  if (previousReading !== undefined) bill.previous_reading = previousReading;
+  if (currentReading !== undefined) bill.current_reading = currentReading;
+  if (ratePerUnit !== undefined) bill.rate_per_unit = ratePerUnit;
+  if (billingMonth) bill.billing_month = new Date(billingMonth);
+  if (status) bill.status = status;
+  if (amount_paid !== undefined) bill.amount_paid = amount_paid;
+
+  if (previousReading !== undefined || currentReading !== undefined || ratePerUnit !== undefined) {
+    bill.units_consumed = bill.current_reading - bill.previous_reading;
+    bill.amount_due = bill.units_consumed * bill.rate_per_unit;
+  }
+
+  bill.updated_at = new Date();
+  await bill.save();
+
+  await logEvent(req.user.id, 'bill_updated', { billId: req.params.billId });
+  res.json({ message: 'Bill updated successfully', bill });
+});
+
+// Admin: Delete bill
+app.delete('/api/admin/bills/:billId', authenticateToken, requireAdmin, async (req, res) => {
+  const bill = await Bill.findOneAndDelete({ id: req.params.billId });
+  if (!bill) return res.status(404).json({ error: 'Bill not found' });
+
+  await logEvent(req.user.id, 'bill_deleted', { billId: req.params.billId });
+  res.json({ message: 'Bill deleted successfully' });
+});
+
+// Admin: Get all bills with user info
+app.get('/api/admin/all-bills', authenticateToken, requireAdmin, async (req, res) => {
+  const { year, userId } = req.query;
+  const query = {};
+
+  if (userId) query.user_id = userId;
+  if (year) {
+    const startDate = new Date(parseInt(year), 0, 1);
+    const endDate = new Date(parseInt(year) + 1, 0, 1);
+    query.billing_month = { $gte: startDate, $lt: endDate };
+  }
+
+  const bills = await Bill.find(query).sort({ billing_month: -1 });
+
+  const billsWithUser = await Promise.all(bills.map(async (bill) => {
+    const user = await User.findOne({ id: bill.user_id });
+    return {
+      ...bill.toObject(),
+      fullname: user ? user.fullname : 'Unknown',
+      account_number: user ? user.account_number : 'N/A',
+      phone: user ? user.phone : 'N/A'
+    };
+  }));
+
+  res.json(billsWithUser);
+});
+
+// Admin: Get user yearly summary
+app.get('/api/admin/users/:userId/yearly', authenticateToken, requireAdmin, async (req, res) => {
+  const { year } = req.query;
+  const currentYear = year ? parseInt(year) : new Date().getFullYear();
+  const startDate = new Date(currentYear, 0, 1);
+  const endDate = new Date(currentYear + 1, 0, 1);
+
+  const user = await User.findOne({ id: req.params.userId });
+  if (!user) return res.status(404).json({ error: 'User not found' });
+
+  const bills = await Bill.find({
+    user_id: req.params.userId,
+    billing_month: { $gte: startDate, $lt: endDate }
+  }).sort({ billing_month: 1 });
+
+  const months = [];
+  for (let m = 0; m < 12; m++) {
+    const monthBills = bills.filter(b => new Date(b.billing_month).getMonth() === m);
+    const totalDue = monthBills.reduce((s, b) => s + b.amount_due, 0);
+    const totalPaid = monthBills.reduce((s, b) => s + b.amount_paid, 0);
+    months.push({
+      month: m,
+      monthName: new Date(currentYear, m).toLocaleString('sw-TZ', { month: 'long' }),
+      bills: monthBills,
+      totalDue,
+      totalPaid,
+      status: monthBills.length === 0 ? 'no_bill' : totalPaid >= totalDue ? 'paid' : 'pending'
+    });
+  }
+
+  res.json({
+    user: { id: user.id, fullname: user.fullname, account_number: user.account_number, phone: user.phone },
+    year: currentYear,
+    totalBills: bills.length,
+    totalDue: bills.reduce((s, b) => s + b.amount_due, 0),
+    totalPaid: bills.reduce((s, b) => s + b.amount_paid, 0),
+    months
+  });
 });
 
 app.get('/api/admin/analytics', authenticateToken, requireAdmin, async (req, res) => {
@@ -333,42 +552,22 @@ app.get('/api/admin/analytics', authenticateToken, requireAdmin, async (req, res
   const payments = await Payment.find({ status: 'successful' });
   const totalRevenue = payments.reduce((sum, p) => sum + p.amount_paid, 0);
   const pendingBills = await Bill.countDocuments({ status: { $in: ['pending', 'partially_paid'] } });
+  const totalBills = await Bill.countDocuments();
+  const paidBills = await Bill.countDocuments({ status: 'paid' });
   const recentActivities = await Analytics.find().sort({ created_at: -1 }).limit(50);
-  res.json({ totalUsers, totalRevenue, pendingBills, recentActivities });
+  res.json({ totalUsers, totalRevenue, pendingBills, totalBills, paidBills, recentActivities });
 });
 
 // ==================== PAGE ROUTES ====================
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
-});
-
-app.get('/login', (req, res) => {
-  res.sendFile(path.join(__dirname, 'login.html'));
-});
-
-app.get('/signup', (req, res) => {
-  res.sendFile(path.join(__dirname, 'signup.html'));
-});
-
-app.get('/reset-password', (req, res) => {
-  res.sendFile(path.join(__dirname, 'reset-password.html'));
-});
-
-app.get('/dashboard', (req, res) => {
-  res.sendFile(path.join(__dirname, 'dashboard.html'));
-});
-
-app.get('/admin', (req, res) => {
-  res.sendFile(path.join(__dirname, 'admin-dashboard.html'));
-});
-
-app.get('/records', (req, res) => {
-  res.sendFile(path.join(__dirname, 'records.html'));
-});
-
-app.get('/records.html', (req, res) => {
-  res.sendFile(path.join(__dirname, 'records.html'));
-});
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
+app.get('/login', (req, res) => res.sendFile(path.join(__dirname, 'login.html')));
+app.get('/signup', (req, res) => res.sendFile(path.join(__dirname, 'signup.html')));
+app.get('/reset-password', (req, res) => res.sendFile(path.join(__dirname, 'reset-password.html')));
+app.get('/dashboard', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')));
+app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'admin-dashboard.html')));
+app.get('/records', (req, res) => res.sendFile(path.join(__dirname, 'records.html')));
+app.get('/records.html', (req, res) => res.sendFile(path.join(__dirname, 'records.html')));
+app.get('/user-bills', (req, res) => res.sendFile(path.join(__dirname, 'user-bills.html')));
 
 app.get('/:page.html', (req, res) => {
   const target = path.join(__dirname, `${req.params.page}.html`);
@@ -382,16 +581,16 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Internal Server Error' });
 });
 
-process.on('uncaughtException', (err) => console.error('🔥 Uncaught Exception:', err));
-process.on('unhandledRejection', (reason) => console.error('🔥 Unhandled Rejection:', reason));
+process.on('uncaughtException', (err) => console.error('Uncaught Exception:', err));
+process.on('unhandledRejection', (reason) => console.error('Unhandled Rejection:', reason));
 
 const PORT = process.env.PORT || 3000;
 initDb().then(() => {
   app.listen(PORT, () => {
-    console.log(`🚀 Mickey Water running on http://localhost:${PORT}`);
+    console.log(`Mickey Water running on http://localhost:${PORT}`);
   });
 }).catch(err => {
-  console.error('❌ Failed to start server:', err);
+  console.error('Failed to start server:', err);
   process.exit(1);
 });
 
