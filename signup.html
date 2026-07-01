@@ -183,7 +183,10 @@
         }
       } catch (e) {
         const banner = document.getElementById('dbBanner');
-        banner.innerHTML = '<span class="dot"></span>Seva haipo online. Jaribu tena baadaye.';
+        const hint = window.location.protocol === 'file:'
+          ? 'Fungua programu kupitia http://localhost:3000 baada ya kuendesha seva.'
+          : 'Endesha seva na hakikisha .env ina MONGODB_URI sahihi.';
+        banner.innerHTML = `<span class="dot"></span>Seva haipo online au bado haijaanzishwa. ${hint}`;
         banner.classList.add('show');
       }
     }
