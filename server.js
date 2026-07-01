@@ -1,6 +1,7 @@
-require('dotenv').config();
-const express = require('express');
 const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
+
+const express = require('express');
 const fs = require('fs');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
@@ -11,7 +12,7 @@ const { v4: uuidv4 } = require('uuid');
 
 const app = express();
 const JWT_SECRET = process.env.JWT_SECRET || 'change_this_secret';
-const MONGODB_URI = process.env.MONGODB_URI;
+const MONGODB_URI = process.env.MONGODB_URI || process.env.MONGODB_URL || process.env.MONGO_URI || process.env.MONGO_URL;
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'mickidadyhamza@gmail.com';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Admin@123';
 
@@ -97,10 +98,18 @@ async function initDb() {
   }
 
   try {
-    await mongoose.connect(MONGODB_URI);
+    await mongoose.connect(MONGODB_URI, {
+      serverSelectionTimeoutMS: 10000,
+      socketTimeoutMS: 45000,
+      retryWrites: true
+    });
     dbConnected = true;
     console.log('Database connected to MongoDB Atlas');
 
+    mongoose.connection.on('connected', () => {
+      dbConnected = true;
+      console.log('MongoDB connected');
+    });
     mongoose.connection.on('disconnected', () => {
       dbConnected = false;
       console.log('MongoDB disconnected');
@@ -109,8 +118,9 @@ async function initDb() {
       dbConnected = true;
       console.log('MongoDB reconnected');
     });
-    mongoose.connection.on('error', () => {
+    mongoose.connection.on('error', (err) => {
       dbConnected = false;
+      console.error('MongoDB connection error:', err.message);
     });
 
     const admin = await User.findOne({ email: ADMIN_EMAIL });
@@ -128,7 +138,7 @@ async function initDb() {
   } catch (err) {
     dbConnected = false;
     console.error('MongoDB connection failed:', err.message);
-    console.warn('Server will continue without database - some features unavailable');
+    console.warn('Check MONGODB_URI in .env or your environment and ensure your MongoDB Atlas network access allows your IP.');
   }
 }
 
@@ -170,10 +180,19 @@ async function logEvent(userId, eventType, eventData = {}) {
 app.get('/api/db-status', (req, res) => {
   const state = mongoose.connection.readyState;
   const states = { 0: 'disconnected', 1: 'connected', 2: 'connecting', 3: 'disconnecting' };
+  const configured = Boolean(MONGODB_URI);
+  const message = !configured
+    ? 'No MongoDB URI configured.'
+    : state === 1
+      ? 'Database connected.'
+      : 'Database offline. Check your MongoDB URI or Atlas network access.';
+
   res.json({
     status: states[state] || 'unknown',
     connected: state === 1,
-    dbName: mongoose.connection.name || null
+    configured,
+    dbName: mongoose.connection.name || null,
+    message
   });
 });
 
