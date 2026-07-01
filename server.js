@@ -7,12 +7,10 @@ const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
-const mongoose = require('mongoose');
 const { v4: uuidv4 } = require('uuid');
 
 const app = express();
 const JWT_SECRET = process.env.JWT_SECRET || 'change_this_secret';
-const MONGODB_URI = process.env.MONGODB_URI || process.env.MONGODB_URL || process.env.MONGO_URI || process.env.MONGO_URL;
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'mickidadyhamza@gmail.com';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Admin@123';
 
@@ -30,98 +28,190 @@ const transporter = nodemailer.createTransport({
   tls: { rejectUnauthorized: false }
 });
 
-// ==================== MONGODB SCHEMAS ====================
-const UserSchema = new mongoose.Schema({
-  id: { type: String, default: uuidv4, unique: true },
-  email: { type: String, unique: true, required: true },
-  password: { type: String, required: true },
-  fullname: { type: String, required: true },
-  phone: String,
-  address: String,
-  account_number: { type: String, unique: true, required: true },
-  meter_number: String,
-  user_type: { type: String, default: 'customer' },
-  status: { type: String, default: 'active' },
-  created_at: { type: Date, default: Date.now },
-  updated_at: { type: Date, default: Date.now }
-});
-const User = mongoose.model('User', UserSchema);
+// ==================== LOCAL JSON STORAGE ====================
+const DATA_DIR = path.join(__dirname, 'data');
 
-const BillSchema = new mongoose.Schema({
-  id: { type: String, default: uuidv4, unique: true },
-  user_id: String,
-  bill_number: { type: String, unique: true },
-  billing_month: Date,
-  previous_reading: Number,
-  current_reading: Number,
-  units_consumed: Number,
-  rate_per_unit: Number,
-  amount_due: Number,
-  amount_paid: { type: Number, default: 0 },
-  status: String,
-  due_date: Date,
-  created_at: { type: Date, default: Date.now },
-  updated_at: { type: Date, default: Date.now }
-});
-const Bill = mongoose.model('Bill', BillSchema);
+function ensureDataFiles() {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+  const files = ['users.json', 'bills.json', 'payments.json', 'analytics.json'];
+  files.forEach((fileName) => {
+    const filePath = path.join(DATA_DIR, fileName);
+    if (!fs.existsSync(filePath)) {
+      fs.writeFileSync(filePath, '[]', 'utf8');
+    }
+  });
+}
 
-const PaymentSchema = new mongoose.Schema({
-  id: { type: String, default: uuidv4, unique: true },
-  bill_id: String,
-  user_id: String,
-  amount_paid: Number,
-  payment_method: String,
-  transaction_id: { type: String, unique: true },
-  receipt_number: { type: String, unique: true },
-  payment_date: { type: Date, default: Date.now },
-  status: String,
-  created_at: { type: Date, default: Date.now }
-});
-const Payment = mongoose.model('Payment', PaymentSchema);
+function readCollection(collectionName) {
+  ensureDataFiles();
+  const filePath = path.join(DATA_DIR, `${collectionName}.json`);
+  if (!fs.existsSync(filePath)) {
+    fs.writeFileSync(filePath, '[]', 'utf8');
+    return [];
+  }
 
-const AnalyticsSchema = new mongoose.Schema({
-  id: { type: String, default: uuidv4 },
-  user_id: String,
-  event_type: String,
-  event_data: mongoose.Schema.Types.Mixed,
-  created_at: { type: Date, default: Date.now }
-});
-const Analytics = mongoose.model('Analytics', AnalyticsSchema);
+  try {
+    const content = fs.readFileSync(filePath, 'utf8').trim();
+    return content ? JSON.parse(content) : [];
+  } catch (err) {
+    console.warn(`Could not read ${collectionName} storage:`, err.message);
+    return [];
+  }
+}
+
+function writeCollection(collectionName, items) {
+  ensureDataFiles();
+  const filePath = path.join(DATA_DIR, `${collectionName}.json`);
+  fs.writeFileSync(filePath, JSON.stringify(items, null, 2), 'utf8');
+}
+
+function createPersistedDocument(collectionName, data = {}, persisted = false) {
+  const doc = { ...data };
+  doc.__collectionName = collectionName;
+  doc.__isNew = !persisted;
+
+  doc.save = async function save() {
+    const payload = { ...doc };
+    delete payload.save;
+    delete payload.toObject;
+    delete payload.__collectionName;
+    delete payload.__isNew;
+
+    if (!payload.id) {
+      payload.id = uuidv4();
+    }
+
+    const items = readCollection(collectionName);
+    const existingIndex = items.findIndex((item) => item.id === payload.id);
+    if (existingIndex >= 0) {
+      items[existingIndex] = { ...items[existingIndex], ...payload };
+    } else {
+      items.push(payload);
+    }
+
+    writeCollection(collectionName, items);
+    Object.assign(doc, payload);
+    doc.__isNew = false;
+    return doc;
+  };
+
+  doc.toObject = function toObject() {
+    const payload = { ...doc };
+    delete payload.save;
+    delete payload.toObject;
+    delete payload.__collectionName;
+    delete payload.__isNew;
+    return payload;
+  };
+
+  return doc;
+}
+
+function normalizeValue(value) {
+  if (value instanceof Date) return value.getTime();
+  if (typeof value === 'string' && !Number.isNaN(Date.parse(value))) {
+    return new Date(value).getTime();
+  }
+  return value;
+}
+
+function matchesQuery(item, query = {}) {
+  if (!query || Object.keys(query).length === 0) return true;
+
+  if (query.$or) {
+    return query.$or.some((condition) => matchesQuery(item, condition));
+  }
+
+  return Object.entries(query).every(([key, expected]) => {
+    const actual = item[key];
+    if (expected && typeof expected === 'object' && !Array.isArray(expected)) {
+      if (expected.$gte !== undefined) return normalizeValue(actual) >= normalizeValue(expected.$gte);
+      if (expected.$lt !== undefined) return normalizeValue(actual) < normalizeValue(expected.$lt);
+      if (expected.$in !== undefined) return expected.$in.includes(actual);
+      if (expected.$ne !== undefined) return actual !== expected.$ne;
+      return false;
+    }
+
+    return actual === expected;
+  });
+}
+
+function createModel(collectionName) {
+  function Model(data = {}) {
+    return createPersistedDocument(collectionName, data);
+  }
+
+  Model.findOne = async function findOne(query = {}) {
+    const items = readCollection(collectionName);
+    const match = items.find((item) => matchesQuery(item, query));
+    return match ? createPersistedDocument(collectionName, match, true) : null;
+  };
+
+  Model.find = function find(query = {}) {
+    const items = readCollection(collectionName).filter((item) => matchesQuery(item, query));
+    const resultSet = items.map((item) => createPersistedDocument(collectionName, item, true));
+
+    resultSet.sort = function sort(spec = {}) {
+      const entries = Object.entries(spec);
+      if (!entries.length) return this;
+      const [field, direction] = entries[0];
+      const multiplier = direction < 0 ? -1 : 1;
+      this.sort((a, b) => {
+        const aValue = normalizeValue(a[field]);
+        const bValue = normalizeValue(b[field]);
+        if (typeof aValue === 'number' && typeof bValue === 'number') {
+          return (aValue - bValue) * multiplier;
+        }
+        return String(aValue).localeCompare(String(bValue)) * multiplier;
+      });
+      return this;
+    };
+
+    resultSet.limit = function limit(count) {
+      return this.slice(0, count);
+    };
+
+    return resultSet;
+  };
+
+  Model.countDocuments = async function countDocuments(query = {}) {
+    const items = readCollection(collectionName);
+    return items.filter((item) => matchesQuery(item, query)).length;
+  };
+
+  Model.findOneAndUpdate = async function findOneAndUpdate(query = {}, updates = {}) {
+    const item = await Model.findOne(query);
+    if (!item) return null;
+    Object.assign(item, updates);
+    await item.save();
+    return item;
+  };
+
+  Model.findOneAndDelete = async function findOneAndDelete(query = {}) {
+    const items = readCollection(collectionName);
+    const itemIndex = items.findIndex((item) => matchesQuery(item, query));
+    if (itemIndex < 0) return null;
+    const [deleted] = items.splice(itemIndex, 1);
+    writeCollection(collectionName, items);
+    return createPersistedDocument(collectionName, deleted, true);
+  };
+
+  return Model;
+}
+
+const User = createModel('users');
+const Bill = createModel('bills');
+const Payment = createModel('payments');
+const Analytics = createModel('analytics');
 
 // ==================== DATABASE INITIALIZATION ====================
 let dbConnected = false;
 
 async function initDb() {
-  if (!MONGODB_URI) {
-    console.warn('MONGODB_URI is missing - server will start without database');
-    return;
-  }
-
   try {
-    await mongoose.connect(MONGODB_URI, {
-      serverSelectionTimeoutMS: 10000,
-      socketTimeoutMS: 45000,
-      retryWrites: true
-    });
+    ensureDataFiles();
     dbConnected = true;
-    console.log('Database connected to MongoDB Atlas');
-
-    mongoose.connection.on('connected', () => {
-      dbConnected = true;
-      console.log('MongoDB connected');
-    });
-    mongoose.connection.on('disconnected', () => {
-      dbConnected = false;
-      console.log('MongoDB disconnected');
-    });
-    mongoose.connection.on('reconnected', () => {
-      dbConnected = true;
-      console.log('MongoDB reconnected');
-    });
-    mongoose.connection.on('error', (err) => {
-      dbConnected = false;
-      console.error('MongoDB connection error:', err.message);
-    });
+    console.log('Local JSON storage initialized');
 
     const admin = await User.findOne({ email: ADMIN_EMAIL });
     if (!admin) {
@@ -137,8 +227,7 @@ async function initDb() {
     }
   } catch (err) {
     dbConnected = false;
-    console.error('MongoDB connection failed:', err.message);
-    console.warn('Check MONGODB_URI in .env or your environment and ensure your MongoDB Atlas network access allows your IP.');
+    console.error('Local storage initialization failed:', err.message);
   }
 }
 
@@ -178,21 +267,12 @@ async function logEvent(userId, eventType, eventData = {}) {
 
 // ==================== DATABASE STATUS ====================
 app.get('/api/db-status', (req, res) => {
-  const state = mongoose.connection.readyState;
-  const states = { 0: 'disconnected', 1: 'connected', 2: 'connecting', 3: 'disconnecting' };
-  const configured = Boolean(MONGODB_URI);
-  const message = !configured
-    ? 'No MongoDB URI configured.'
-    : state === 1
-      ? 'Database connected.'
-      : 'Database offline. Check your MongoDB URI or Atlas network access.';
-
   res.json({
-    status: states[state] || 'unknown',
-    connected: state === 1,
-    configured,
-    dbName: mongoose.connection.name || null,
-    message
+    status: dbConnected ? 'connected' : 'offline',
+    connected: dbConnected,
+    configured: true,
+    dbName: 'local-json',
+    message: dbConnected ? 'Database connected locally via JSON files.' : 'Database offline.'
   });
 });
 
@@ -622,7 +702,7 @@ const PORT = process.env.PORT || 3000;
 initDb().then(() => {
   app.listen(PORT, () => {
     console.log(`Mickey Water running on http://localhost:${PORT}`);
-    if (!dbConnected) console.warn('WARNING: Running without MongoDB - login/signup will not work');
+    if (!dbConnected) console.warn('WARNING: Local storage not initialized - login/signup may be unavailable');
   });
 }).catch(err => {
   console.error('Database error:', err.message);
