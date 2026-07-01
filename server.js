@@ -92,36 +92,43 @@ let dbConnected = false;
 
 async function initDb() {
   if (!MONGODB_URI) {
-    throw new Error('MONGODB_URI is missing in .env');
+    console.warn('MONGODB_URI is missing - server will start without database');
+    return;
   }
 
-  await mongoose.connect(MONGODB_URI);
-  dbConnected = true;
-  console.log('Database connected to MongoDB Atlas');
-
-  mongoose.connection.on('disconnected', () => {
-    dbConnected = false;
-    console.log('MongoDB disconnected');
-  });
-  mongoose.connection.on('reconnected', () => {
+  try {
+    await mongoose.connect(MONGODB_URI);
     dbConnected = true;
-    console.log('MongoDB reconnected');
-  });
-  mongoose.connection.on('error', () => {
-    dbConnected = false;
-  });
+    console.log('Database connected to MongoDB Atlas');
 
-  const admin = await User.findOne({ email: ADMIN_EMAIL });
-  if (!admin) {
-    const hashed = await bcrypt.hash(ADMIN_PASSWORD, 10);
-    await new User({
-      email: ADMIN_EMAIL,
-      password: hashed,
-      fullname: 'System Administrator',
-      account_number: 'ADMIN-001',
-      user_type: 'admin'
-    }).save();
-    console.log('Admin initialized');
+    mongoose.connection.on('disconnected', () => {
+      dbConnected = false;
+      console.log('MongoDB disconnected');
+    });
+    mongoose.connection.on('reconnected', () => {
+      dbConnected = true;
+      console.log('MongoDB reconnected');
+    });
+    mongoose.connection.on('error', () => {
+      dbConnected = false;
+    });
+
+    const admin = await User.findOne({ email: ADMIN_EMAIL });
+    if (!admin) {
+      const hashed = await bcrypt.hash(ADMIN_PASSWORD, 10);
+      await new User({
+        email: ADMIN_EMAIL,
+        password: hashed,
+        fullname: 'System Administrator',
+        account_number: 'ADMIN-001',
+        user_type: 'admin'
+      }).save();
+      console.log('Admin initialized');
+    }
+  } catch (err) {
+    dbConnected = false;
+    console.error('MongoDB connection failed:', err.message);
+    console.warn('Server will continue without database - some features unavailable');
   }
 }
 
@@ -170,8 +177,16 @@ app.get('/api/db-status', (req, res) => {
   });
 });
 
+// ==================== DB CHECK MIDDLEWARE ====================
+function requireDb(req, res, next) {
+  if (!dbConnected) {
+    return res.status(503).json({ error: 'Database ipo offline. Jaribu tena baadaye.', dbOffline: true });
+  }
+  next();
+}
+
 // ==================== AUTH ROUTES ====================
-app.post('/api/auth/signup', async (req, res) => {
+app.post('/api/auth/signup', requireDb, async (req, res) => {
   const { fullname, email, password, phone, address, account_number } = req.body;
   try {
     const exists = await User.findOne({ $or: [{ email }, { account_number }] });
@@ -186,7 +201,7 @@ app.post('/api/auth/signup', async (req, res) => {
   }
 });
 
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', requireDb, async (req, res) => {
   const { email, password } = req.body;
 
   const user = await User.findOne({ email });
@@ -214,7 +229,7 @@ app.post('/api/auth/login', async (req, res) => {
   });
 });
 
-app.post('/api/auth/forgot-password', async (req, res) => {
+app.post('/api/auth/forgot-password', requireDb, async (req, res) => {
   const { email } = req.body;
   const user = await User.findOne({ email });
   if (!user) return res.status(404).json({ error: 'Email not found' });
@@ -233,7 +248,7 @@ app.post('/api/auth/forgot-password', async (req, res) => {
   res.json({ message: 'Reset link sent to your email' });
 });
 
-app.post('/api/auth/reset-password', async (req, res) => {
+app.post('/api/auth/reset-password', requireDb, async (req, res) => {
   const { token, newPassword } = req.body;
   if (!token || !newPassword) return res.status(400).json({ error: 'Token and new password are required' });
 
@@ -588,10 +603,13 @@ const PORT = process.env.PORT || 3000;
 initDb().then(() => {
   app.listen(PORT, () => {
     console.log(`Mickey Water running on http://localhost:${PORT}`);
+    if (!dbConnected) console.warn('WARNING: Running without MongoDB - login/signup will not work');
   });
 }).catch(err => {
-  console.error('Failed to start server:', err);
-  process.exit(1);
+  console.error('Database error:', err.message);
+  app.listen(PORT, () => {
+    console.log(`Mickey Water running on http://localhost:${PORT} (without database)`);
+  });
 });
 
 function generateReceiptHTML(payment) {
